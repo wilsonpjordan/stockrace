@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classroom Stock Race</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f8;
+    --muted: rgba(240,240,248,0.45);
+    --accent: #7c6cfa;
+    --accent2: #4de8a4;
+    --accent3: #fa6c6c;
+    --gold: #fbbf24;
+    --silver: #94a3b8;
+    --bronze: #c2855a;
+    --font: 'Syne', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,108,250,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,108,250,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 40px 0 32px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo-mark {
+    width: 44px; height: 44px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-sub { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 1px; }
+  .header-tag {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--accent2);
+    background: rgba(77,232,164,0.08);
+    border: 1px solid rgba(77,232,164,0.2);
+    border-radius: 20px;
+    padding: 4px 12px;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; animation: fadeIn 0.3s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── SECTION TITLES ── */
+  .section-title {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+
+  /* ── INFO BOX ── */
+  .info-box {
+    background: rgba(124,108,250,0.06);
+    border: 1px solid rgba(124,108,250,0.2);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: rgba(240,240,248,0.7);
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+  .info-box strong { color: var(--accent); }
+
+  /* ── STUDENT ROWS ── */
+  .student-table-header {
+    display: grid;
+    grid-template-columns: 160px 1fr 32px;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .srow {
+    display: grid;
+    grid-template-columns: 160px 1fr 32px;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .srow:last-child { border-bottom: none; }
+  input[type="text"] {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 9px 12px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: rgba(240,240,248,0.25); }
+  .rm-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .rm-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  /* ── SETTINGS ── */
+  .settings-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .setting-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    cursor: pointer;
+  }
+  select:focus { border-color: var(--accent); }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 28px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .btn-primary:hover { background: #6a5ce8; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-outline-sm {
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: var(--font);
+    font-size: 12px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-outline-sm:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── ERROR ── */
+  .err {
+    background: rgba(250,108,108,0.08);
+    border: 1px solid rgba(250,108,108,0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #fa9a9a;
+    margin-bottom: 16px;
+    display: none;
+    line-height: 1.6;
+  }
+  .err.show { display: block; }
+
+  /* ── SIM HEADER ── */
+  .sim-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .yr-display {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--muted);
+  }
+  .yr-num {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  /* ── CONTROLS ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .speed-label { font-size: 12px; color: var(--muted); }
+
+  /* ── LEGEND ── */
+  .legend-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .leg-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── CHART ── */
+  .chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .chart-wrap { position: relative; width: 100%; height: 380px; }
+
+  /* ── STANDINGS ── */
+  .lb-list { display: flex; flex-direction: column; gap: 8px; }
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    transition: border-color 0.2s;
+  }
+  .lb-row.gold   { border-color: rgba(251,191,36,0.35);  background: rgba(251,191,36,0.04); }
+  .lb-row.silver { border-color: rgba(148,163,184,0.35); background: rgba(148,163,184,0.04); }
+  .lb-row.bronze { border-color: rgba(194,133,90,0.35);  background: rgba(194,133,90,0.04); }
+  .lb-medal { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+  .lb-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .lb-info { flex: 1; min-width: 0; }
+  .lb-name { font-size: 15px; font-weight: 700; }
+  .lb-tickers { font-size: 11px; font-family: var(--mono); color: var(--muted); margin-top: 2px; }
+  .lb-metrics { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .lb-right { text-align: right; flex-shrink: 0; }
+  .lb-val { font-size: 16px; font-weight: 700; }
+  .lb-ret { font-size: 12px; font-family: var(--mono); margin-top: 2px; }
+
+  /* ── METRIC PILLS ── */
+  .pill {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 2px 7px;
+    border-radius: 20px;
+    border: 1px solid;
+    display: inline-block;
+  }
+  .pill.good { background: rgba(77,232,164,0.08); color: #4de8a4; border-color: rgba(77,232,164,0.25); }
+  .pill.bad  { background: rgba(250,108,108,0.08); color: #fa9a9a; border-color: rgba(250,108,108,0.25); }
+  .pill.ok   { background: rgba(124,108,250,0.08); color: #a89cfc; border-color: rgba(124,108,250,0.25); }
+  .pill.na   { background: rgba(255,255,255,0.04); color: var(--muted); border-color: var(--border); }
+
+  /* ── WIN SCREEN ── */
+  .win-card {
+    text-align: center;
+    padding: 48px 24px 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .win-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%;
+    transform: translateX(-50%);
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(251,191,36,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .win-trophy { font-size: 64px; margin-bottom: 16px; display: block; position: relative; }
+  .win-name { font-size: 32px; font-weight: 800; color: var(--gold); margin-bottom: 6px; letter-spacing: -1px; }
+  .win-value { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+  .win-picks { font-size: 13px; font-family: var(--mono); color: var(--muted); }
+
+  /* ── METRICS TABLE ── */
+  .metrics-table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left;
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .ticker-cell { font-weight: 700; font-size: 13px; font-family: var(--mono); color: var(--accent); }
+  .company-cell { font-size: 11px; color: var(--muted); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .est-tag { font-size: 9px; background: rgba(251,191,36,0.1); color: var(--gold); border: 1px solid rgba(251,191,36,0.25); border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+
+  /* ── STOCK BREAKDOWN ── */
+  .breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+  .breakdown-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .breakdown-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .breakdown-avatar {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .breakdown-student-name {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .breakdown-total {
+    margin-left: auto;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .breakdown-total-val { font-size: 14px; font-weight: 700; }
+  .breakdown-total-ret { font-size: 11px; font-family: var(--mono); }
+  .stock-row {
+    display: flex;
+    align-items: center;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .stock-row:last-child { border-bottom: none; }
+  .stock-bar-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+  .stock-sym { font-size: 13px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+  .stock-name-small { font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stock-bar-track {
+    height: 5px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .stock-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .stock-right { text-align: right; flex-shrink: 0; min-width: 80px; }
+  .stock-final-price { font-size: 12px; font-family: var(--mono); color: var(--text); }
+  .stock-ret { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+  .stock-value { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: rgba(240,240,248,0.2);
+    padding-top: 40px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .student-table-header, .srow { grid-template-columns: 120px 1fr 32px; }
+    .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .win-name { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-mark">📈</div>
+      <div>
+        <div class="logo-text">Stock Race</div>
+        <div class="logo-sub">Classroom investment simulator</div>
+      </div>
+    </div>
+    <div class="header-tag">Educational · Not financial advice</div>
+  </div>
+
+  <!-- SETUP SCREEN -->
+  <div id="s-setup" class="screen active">
+    <div class="section-title">Student portfolios</div>
+
+    <div class="info-box">
+      Each student picks <strong>3 real stock tickers</strong>. $1,000,000 splits equally ($333,333 per stock).
+      The simulation uses real fundamentals — <strong>P/E, P/S, beta, dividend yield, ROE, EPS growth</strong> — to drive realistic year-by-year returns.
+      Supports 120+ US stocks &amp; ETFs. Mutual funds (e.g. ARFFX) are not supported — swap for a stock ticker.
+    </div>
+
+    <div class="card">
+      <div class="student-table-header">
+        <div>Student name</div>
+        <div>3 tickers — comma separated (e.g. AAPL, TSLA, NVDA)</div>
+        <div></div>
+      </div>
+      <div id="rows"></div>
+      <div style="padding-top:12px">
+        <button class="btn-outline-sm" onclick="addRow()">+ Add student</button>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:24px">Simulation settings</div>
+    <div class="card">
+      <div class="settings-row">
+        <div class="setting-group">
+          <span>Years to simulate:</span>
+          <select id="sel-years">
+            <option value="5">5 years</option>
+            <option value="10" selected>10 years</option>
+            <option value="15">15 years</option>
+            <option value="20">20 years</option>
+            <option value="30">30 years</option>
+            <option value="40">40 years</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <span>Market conditions:</span>
+          <select id="sel-mkt">
+            <option value="bull">Bull market</option>
+            <option value="mixed" selected>Mixed (realistic)</option>
+            <option value="bear">Bear market</option>
+            <option value="volatile">Volatile / crisis</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="err" class="err"></div>
+    <button class="btn-primary" onclick="launch()">Start Race →</button>
+  </div>
+
+  <!-- SIMULATION SCREEN -->
+  <div id="s-sim" class="screen">
+    <div class="sim-header">
+      <div>
+        <div class="yr-display">Current year</div>
+        <div class="yr-num" id="yr-num">0</div>
+      </div>
+      <div class="controls">
+        <button class="btn-primary" id="play-btn" onclick="togglePlay()" style="padding:10px 22px">Play</button>
+        <button class="btn-secondary" onclick="resetSim()">Restart</button>
+        <span class="speed-label">Speed:</span>
+        <select id="sel-spd">
+          <option value="1400">Slow</option>
+          <option value="750" selected>Normal</option>
+          <option value="300">Fast</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="legend-wrap" id="legend"></div>
+
+    <div class="chart-container">
+      <div class="chart-wrap">
+        <canvas id="raceChart" role="img" aria-label="Student portfolio race over time">Portfolio race chart</canvas>
+      </div>
+    </div>
+
+    <div class="section-title">Live standings</div>
+    <div id="standings"></div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="s-end" class="screen">
+    <div class="win-card">
+      <span class="win-trophy">🏆</span>
+      <div class="win-name" id="win-name"></div>
+      <div class="win-value" id="win-value"></div>
+      <div class="win-picks" id="win-picks"></div>
+    </div>
+
+    <div class="section-title">Final leaderboard</div>
+    <div id="final-lb" style="margin-bottom:32px"></div>
+
+    <div class="section-title">Full race</div>
+    <div class="legend-wrap" id="end-legend"></div>
+    <div class="chart-container">
+      <div class="chart-wrap" style="height:300px">
+        <canvas id="endChart" role="img" aria-label="Complete race chart">Final chart</canvas>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:24px">Individual stock performance by student</div>
+    <div id="stock-breakdown"></div>
+
+    <div class="section-title" style="margin-top:24px">Fundamentals used in this simulation</div>
+    <div class="card metrics-table-wrap">
+      <div id="metrics-table"></div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap">
+      <button class="btn-primary" onclick="backToSetup()">New game</button>
+      <button class="btn-secondary" onclick="replaySim()">Watch replay</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    Stock Race · Educational use only · Not financial advice · Fundamentals sourced from public filings, Apr 2025
+  </div>
+</div>
+
+<script>
+// ── FUNDAMENTALS DB (Apr 2025, public filings) ──
+// price, pe, ps, beta, div(%), roe(%), eps(3y growth %), gm(gross margin %), de(debt/equity), name, sec
+const DB={
+  'AAPL': {p:213,  pe:33,   ps:8.5,  beta:1.24, div:0.5,  roe:160,  eps:9,    gm:46,  de:1.8,  name:'Apple Inc',                   sec:'Technology'},
+  'MSFT': {p:415,  pe:37,   ps:13.2, beta:0.90, div:0.7,  roe:38,   eps:15,   gm:70,  de:0.4,  name:'Microsoft Corp',               sec:'Technology'},
+  'GOOGL':{p:175,  pe:23,   ps:6.1,  beta:1.06, div:0.5,  roe:32,   eps:20,   gm:57,  de:0.1,  name:'Alphabet Inc',                 sec:'Technology'},
+  'AMZN': {p:195,  pe:44,   ps:3.5,  beta:1.15, div:0.0,  roe:22,   eps:55,   gm:49,  de:0.5,  name:'Amazon.com Inc',               sec:'Consumer Cyclical'},
+  'NVDA': {p:116,  pe:65,   ps:25.0, beta:1.72, div:0.03, roe:120,  eps:180,  gm:75,  de:0.4,  name:'NVIDIA Corp',                  sec:'Technology'},
+  'META': {p:520,  pe:28,   ps:9.2,  beta:1.22, div:0.4,  roe:36,   eps:40,   gm:81,  de:0.1,  name:'Meta Platforms',               sec:'Technology'},
+  'TSLA': {p:175,  pe:88,   ps:8.1,  beta:2.10, div:0.0,  roe:14,   eps:-15,  gm:18,  de:0.1,  name:'Tesla Inc',                    sec:'Consumer Cyclical'},
+  'ORCL': {p:130,  pe:32,   ps:8.1,  beta:0.98, div:1.1,  roe:null, eps:12,   gm:72,  de:null, name:'Oracle Corp',                  sec:'Technology'},
+  'MCD':  {p:290,  pe:24,   ps:8.5,  beta:0.71, div:2.3,  roe:null, eps:8,    gm:57,  de:null, name:"McDonald's Corp",               sec:'Consumer Cyclical'},
+  'NFLX': {p:720,  pe:45,   ps:9.8,  beta:1.28, div:0.0,  roe:38,   eps:52,   gm:47,  de:0.7,  name:'Netflix Inc',                  sec:'Communication Services'},
+  'JPM':  {p:220,  pe:12,   ps:3.8,  beta:1.12, div:2.2,  roe:17,   eps:14,   gm:null,de:null, name:'JPMorgan Chase',               sec:'Financial Services'},
+  'GS':   {p:520,  pe:13,   ps:2.4,  beta:1.38, div:2.1,  roe:12,   eps:22,   gm:null,de:null, name:'Goldman Sachs',                sec:'Financial Services'},
+  'BAC':  {p:42,   pe:13,   ps:3.2,  beta:1.38, div:2.4,  roe:10,   eps:12,   gm:null,de:null, name:'Bank of America',              sec:'Financial Services'},
+  'V':    {p:278,  pe:31,   ps:15.1, beta:0.95, div:0.7,  roe:47,   eps:14,   gm:80,  de:0.6,  name:'Visa Inc',                     sec:'Financial Services'},
+  'MA':   {p:480,  pe:37,   ps:17.2, beta:1.02, div:0.5,  roe:180,  eps:15,   gm:79,  de:1.8,  name:'Mastercard Inc',               sec:'Financial Services'},
+  'JNJ':  {p:145,  pe:16,   ps:4.2,  beta:0.55, div:3.2,  roe:23,   eps:3,    gm:68,  de:0.5,  name:'Johnson & Johnson',            sec:'Healthcare'},
+  'UNH':  {p:525,  pe:20,   ps:1.5,  beta:0.62, div:1.5,  roe:28,   eps:12,   gm:24,  de:0.7,  name:'UnitedHealth Group',           sec:'Healthcare'},
+  'LLY':  {p:870,  pe:72,   ps:19.5, beta:0.42, div:0.6,  roe:60,   eps:65,   gm:80,  de:1.1,  name:'Eli Lilly',                    sec:'Healthcare'},
+  'ABBV': {p:185,  pe:58,   ps:5.8,  beta:0.68, div:3.4,  roe:null, eps:8,    gm:70,  de:null, name:'AbbVie Inc',                   sec:'Healthcare'},
+  'MRK':  {p:125,  pe:14,   ps:3.9,  beta:0.58, div:2.6,  roe:33,   eps:12,   gm:75,  de:0.6,  name:'Merck & Co',                   sec:'Healthcare'},
+  'PFE':  {p:27,   pe:null, ps:2.8,  beta:0.58, div:6.2,  roe:4,    eps:-35,  gm:65,  de:0.6,  name:'Pfizer Inc',                   sec:'Healthcare'},
+  'WMT':  {p:87,   pe:30,   ps:0.8,  beta:0.52, div:1.3,  roe:20,   eps:14,   gm:24,  de:0.7,  name:'Walmart Inc',                  sec:'Consumer Staples'},
+  'COST': {p:880,  pe:52,   ps:1.5,  beta:0.76, div:0.6,  roe:31,   eps:16,   gm:13,  de:0.3,  name:'Costco Wholesale',             sec:'Consumer Staples'},
+  'KO':   {p:66,   pe:24,   ps:5.8,  beta:0.52, div:3.1,  roe:42,   eps:4,    gm:60,  de:1.7,  name:'Coca-Cola Co',                 sec:'Consumer Staples'},
+  'PEP':  {p:165,  pe:23,   ps:2.6,  beta:0.50, div:3.0,  roe:52,   eps:5,    gm:55,  de:2.1,  name:'PepsiCo Inc',                  sec:'Consumer Staples'},
+  'MNST': {p:52,   pe:28,   ps:7.2,  beta:0.72, div:0.0,  roe:26,   eps:12,   gm:54,  de:0.0,  name:'Monster Beverage Corp',        sec:'Consumer Staples'},
+  'CELH': {p:36,   pe:null, ps:4.5,  beta:1.85, div:0.0,  roe:18,   eps:null, gm:50,  de:0.0,  name:'Celsius Holdings Inc',         sec:'Consumer Staples'},
+  'CP':   {p:81,   pe:22,   ps:6.8,  beta:0.88, div:0.8,  roe:18,   eps:12,   gm:55,  de:0.7,  name:'Canadian Pacific Kansas City', sec:'Industrials'},
+  'UP':   {p:225,  pe:20,   ps:5.2,  beta:0.85, div:2.4,  roe:24,   eps:8,    gm:58,  de:1.0,  name:'Union Pacific Corp',           sec:'Industrials'},
+  'BA':   {p:175,  pe:null, ps:1.1,  beta:1.44, div:0.0,  roe:null, eps:null, gm:10,  de:null, name:'Boeing Co',                    sec:'Industrials'},
+  'CAT':  {p:350,  pe:16,   ps:2.2,  beta:1.10, div:1.6,  roe:55,   eps:14,   gm:38,  de:1.4,  name:'Caterpillar Inc',              sec:'Industrials'},
+  'GE':   {p:165,  pe:32,   ps:2.8,  beta:1.28, div:0.6,  roe:22,   eps:40,   gm:26,  de:0.6,  name:'GE Aerospace',                 sec:'Industrials'},
+  'SPHR': {p:107,  pe:null, ps:3.8,  beta:1.42, div:0.0,  roe:null, eps:null, gm:35,  de:2.1,  name:'Sphere Entertainment Co',      sec:'Communication Services'},
+  'DIS':  {p:100,  pe:35,   ps:2.1,  beta:1.28, div:0.0,  roe:5,    eps:null, gm:35,  de:0.8,  name:'Walt Disney Co',               sec:'Communication Services'},
+  'BBY':  {p:72,   pe:12,   ps:0.3,  beta:1.42, div:5.2,  roe:null, eps:-8,   gm:22,  de:null, name:'Best Buy Co Inc',              sec:'Consumer Cyclical'},
+  'TGT':  {p:100,  pe:14,   ps:0.5,  beta:0.92, div:4.2,  roe:28,   eps:-5,   gm:28,  de:1.1,  name:'Target Corp',                  sec:'Consumer Cyclical'},
+  'HD':   {p:360,  pe:24,   ps:2.2,  beta:1.01, div:2.4,  roe:null, eps:8,    gm:34,  de:null, name:'Home Depot Inc',               sec:'Consumer Cyclical'},
+  'XOM':  {p:110,  pe:13,   ps:1.3,  beta:1.07, div:3.6,  roe:16,   eps:2,    gm:42,  de:0.2,  name:'Exxon Mobil Corp',             sec:'Energy'},
+  'CVX':  {p:155,  pe:14,   ps:1.5,  beta:1.02, div:4.1,  roe:13,   eps:-2,   gm:44,  de:0.2,  name:'Chevron Corp',                 sec:'Energy'},
+  'AMD':  {p:165,  pe:195,  ps:10.5, beta:1.75, div:0.0,  roe:4,    eps:null, gm:53,  de:0.1,  name:'Advanced Micro Devices',       sec:'Technology'},
+  'AVGO': {p:175,  pe:30,   ps:12.8, beta:1.20, div:1.2,  roe:50,   eps:35,   gm:64,  de:1.2,  name:'Broadcom Inc',                 sec:'Technology'},
+  'QCOM': {p:195,  pe:18,   ps:5.2,  beta:1.35, div:1.9,  roe:42,   eps:12,   gm:56,  de:0.7,  name:'Qualcomm Inc',                 sec:'Technology'},
+  'INTC': {p:22,   pe:null, ps:1.2,  beta:1.05, div:2.0,  roe:null, eps:null, gm:34,  de:0.5,  name:'Intel Corp',                   sec:'Technology'},
+  'CRM':  {p:285,  pe:85,   ps:8.2,  beta:1.30, div:0.0,  roe:10,   eps:null, gm:77,  de:0.2,  name:'Salesforce Inc',               sec:'Technology'},
+  'ADBE': {p:455,  pe:44,   ps:13.5, beta:1.22, div:0.0,  roe:38,   eps:14,   gm:88,  de:0.4,  name:'Adobe Inc',                    sec:'Technology'},
+  'PLTR': {p:25,   pe:210,  ps:22.5, beta:2.40, div:0.0,  roe:8,    eps:null, gm:81,  de:0.0,  name:'Palantir Technologies',         sec:'Technology'},
+  'CRWD': {p:345,  pe:null, ps:22.8, beta:1.62, div:0.0,  roe:12,   eps:null, gm:76,  de:0.3,  name:'CrowdStrike Holdings',          sec:'Technology'},
+  'SNOW': {p:155,  pe:null, ps:16.5, beta:1.85, div:0.0,  roe:null, eps:null, gm:67,  de:0.0,  name:'Snowflake Inc',                 sec:'Technology'},
+  'UBER': {p:75,   pe:62,   ps:3.8,  beta:1.38, div:0.0,  roe:18,   eps:null, gm:38,  de:0.8,  name:'Uber Technologies',            sec:'Technology'},
+  'COIN': {p:225,  pe:42,   ps:14.2, beta:3.40, div:0.0,  roe:12,   eps:null, gm:85,  de:0.1,  name:'Coinbase Global',              sec:'Financial Services'},
+  'SHOP': {p:95,   pe:null, ps:12.5, beta:1.72, div:0.0,  roe:8,    eps:null, gm:52,  de:0.1,  name:'Shopify Inc',                  sec:'Technology'},
+  'SPY':  {p:535,  pe:22,   ps:2.5,  beta:1.00, div:1.3,  roe:20,   eps:8,    gm:null,de:null, name:'SPDR S&P 500 ETF',             sec:'ETF'},
+  'QQQ':  {p:450,  pe:30,   ps:6.5,  beta:1.10, div:0.6,  roe:28,   eps:14,   gm:null,de:null, name:'Invesco QQQ Trust',            sec:'ETF'},
+  'IWM':  {p:205,  pe:16,   ps:1.4,  beta:1.22, div:1.4,  roe:12,   eps:5,    gm:null,de:null, name:'iShares Russell 2000',         sec:'ETF'},
+  'GLD':  {p:225,  pe:null, ps:null, beta:0.12, div:0.0,  roe:null, eps:null, gm:null,de:null, name:'SPDR Gold Shares',             sec:'Commodity ETF'},
+  'VZ':   {p:42,   pe:15,   ps:1.4,  beta:0.37, div:6.5,  roe:18,   eps:-2,   gm:58,  de:1.5,  name:'Verizon Communications',       sec:'Communication Services'},
+  'T':    {p:18,   pe:18,   ps:1.1,  beta:0.52, div:5.8,  roe:12,   eps:-5,   gm:55,  de:1.8,  name:'AT&T Inc',                     sec:'Communication Services'},
+  'NKE':  {p:88,   pe:24,   ps:2.5,  beta:0.95, div:1.8,  roe:38,   eps:2,    gm:45,  de:0.8,  name:'Nike Inc',                     sec:'Consumer Cyclical'},
+  'SBUX': {p:84,   pe:28,   ps:2.8,  beta:0.88, div:2.8,  roe:null, eps:2,    gm:28,  de:null, name:'Starbucks Corp',               sec:'Consumer Cyclical'},
+  'LULU': {p:300,  pe:28,   ps:5.2,  beta:1.48, div:0.0,  roe:38,   eps:8,    gm:58,  de:0.1,  name:'Lululemon Athletica',          sec:'Consumer Cyclical'},
+  'DAL':  {p:45,   pe:7,    ps:0.4,  beta:1.52, div:0.9,  roe:22,   eps:null, gm:18,  de:2.0,  name:'Delta Air Lines',              sec:'Industrials'},
+  'F':    {p:12,   pe:12,   ps:0.3,  beta:1.55, div:4.8,  roe:12,   eps:null, gm:10,  de:3.0,  name:'Ford Motor Co',                sec:'Consumer Cyclical'},
+  'GM':   {p:47,   pe:5,    ps:0.3,  beta:1.42, div:1.0,  roe:14,   eps:8,    gm:14,  de:2.5,  name:'General Motors Co',            sec:'Consumer Cyclical'},
+  'NVO':  {p:120,  pe:38,   ps:16.2, beta:0.48, div:1.1,  roe:80,   eps:38,   gm:85,  de:0.2,  name:'Novo Nordisk A/S',             sec:'Healthcare'},
+  'NEE':  {p:72,   pe:20,   ps:5.8,  beta:0.48, div:3.1,  roe:12,   eps:8,    gm:50,  de:1.4,  name:'NextEra Energy',               sec:'Utilities'},
+  'O':    {p:55,   pe:42,   ps:8.5,  beta:0.68, div:5.6,  roe:5,    eps:2,    gm:95,  de:1.0,  name:'Realty Income Corp',           sec:'Real Estate'},
+  'BRK.B':{p:415,  pe:21,   ps:2.3,  beta:0.88, div:0.0,  roe:14,   eps:6,    gm:null,de:null, name:'Berkshire Hathaway B',         sec:'Financial Services'},
+  'RIVN': {p:13,   pe:null, ps:2.8,  beta:1.85, div:0.0,  roe:null, eps:null, gm:-40, de:0.5,  name:'Rivian Automotive',            sec:'Consumer Cyclical'},
+  'CMG':  {p:55,   pe:52,   ps:7.8,  beta:1.22, div:0.0,  roe:45,   eps:18,   gm:26,  de:0.3,  name:'Chipotle Mexican Grill',       sec:'Consumer Cyclical'},
+  'BABA': {p:78,   pe:12,   ps:1.8,  beta:0.72, div:1.2,  roe:12,   eps:-8,   gm:38,  de:0.2,  name:'Alibaba Group',                sec:'Consumer Cyclical'},
+  'TSM':  {p:165,  pe:28,   ps:8.2,  beta:1.12, div:1.6,  roe:28,   eps:22,   gm:54,  de:0.3,  name:'Taiwan Semiconductor',         sec:'Technology'},
+  'PYPL': {p:65,   pe:18,   ps:2.4,  beta:1.65, div:0.0,  roe:18,   eps:null, gm:45,  de:0.5,  name:'PayPal Holdings',              sec:'Financial Services'},
+  'ABNB': {p:125,  pe:42,   ps:8.4,  beta:1.48, div:0.0,  roe:22,   eps:null, gm:73,  de:0.3,  name:'Airbnb Inc',                   sec:'Consumer Cyclical'},
+  'LMT':  {p:480,  pe:17,   ps:1.8,  beta:0.48, div:2.8,  roe:null, eps:6,    gm:13,  de:null, name:'Lockheed Martin',              sec:'Industrials'},
+  'PG':   {p:162,  pe:27,   ps:4.8,  beta:0.48, div:2.3,  roe:31,   eps:7,    gm:52,  de:0.7,  name:'Procter & Gamble',             sec:'Consumer Staples'},
+};
+
+const COLORS=['#7c6cfa','#4de8a4','#fa8c6c','#60b4fa','#f4c842','#e86cca','#6cfac0','#fa6c6c','#c0fa6c','#6cb4e8','#e8a46c','#a46cfa','#4dfae8','#fa4d6c','#c8fa4d'];
+const MKT={
+  bull:     {drift:0.07,  mag:0.02, crashP:0.04},
+  mixed:    {drift:0.03,  mag:0.04, crashP:0.10},
+  bear:     {drift:-0.02, mag:0.05, crashP:0.18},
+  volatile: {drift:0.01,  mag:0.08, crashP:0.22},
+};
+const START=1000000;
+
+let students=[], sim=null, chart=null, frame=0, playing=false, timer=null, totalYears=10;
+const $=id=>document.getElementById(id);
+const show=id=>{document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active')};
+
+for(let i=0;i<4;i++) students.push({name:'',tickers:''});
+renderRows();
+
+function renderRows(){
+  $('rows').innerHTML=students.map((s,i)=>`
+    <div class="srow">
+      <input type="text" placeholder="Student name" value="${s.name}" oninput="students[${i}].name=this.value">
+      <input type="text" placeholder="e.g. AAPL, TSLA, NVDA" value="${s.tickers}" oninput="students[${i}].tickers=this.value.toUpperCase()" style="text-transform:uppercase">
+      <button class="rm-btn" onclick="removeRow(${i})">×</button>
+    </div>`).join('');
+}
+function addRow(){if(students.length>=15)return;students.push({name:'',tickers:''});renderRows();}
+function removeRow(i){students.splice(i,1);renderRows();}
+function parseTickers(str){return str.split(',').map(t=>t.trim().toUpperCase()).filter(Boolean);}
+function showErr(msg){const e=$('err');e.innerHTML=msg;e.className='err show';}
+function isMutualFund(s){return /^[A-Z]{4,5}X$/.test(s);}
+
+function estimateStock(sym){
+  const seed=sym.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  const r=(min,max,s)=>min+((s*137+31)%1000)/1000*(max-min);
+  return{p:Math.round(15+r(0,280,seed)),pe:Math.round(15+r(0,40,seed*3)),ps:parseFloat((1+r(0,10,seed*7)).toFixed(1)),beta:parseFloat((0.7+r(0,1.2,seed*11)).toFixed(2)),div:parseFloat(r(0,3,seed*13).toFixed(1)),roe:Math.round(8+r(0,28,seed*17)),eps:Math.round(-5+r(0,20,seed*19)),gm:Math.round(20+r(0,50,seed*23)),de:parseFloat((0.2+r(0,1.4,seed*29)).toFixed(1)),name:sym,sec:'Unknown',estimated:true};
+}
+function getStock(sym){return DB[sym]||estimateStock(sym);}
+
+function launch(){
+  $('err').className='err';
+  const filled=students.filter(s=>s.name.trim()&&s.tickers.trim());
+  if(filled.length<2){showErr('Add at least 2 students with names and tickers.');return;}
+  const problems=[];
+  for(const s of filled){
+    const tks=parseTickers(s.tickers);
+    if(tks.length!==3) problems.push(`<strong>${s.name||'?'}</strong>: needs exactly 3 tickers (found ${tks.length})`);
+  }
+  if(problems.length){showErr(problems.join('<br>'));return;}
+  const funds=filled.flatMap(s=>parseTickers(s.tickers)).filter(isMutualFund);
+  if(funds.length){showErr(`<strong>Mutual funds not supported:</strong> ${funds.join(', ')} — swap for a stock ticker.`);return;}
+  totalYears=parseInt($('sel-years').value);
+  sim=buildSim(filled,$('sel-mkt').value,totalYears);
+  buildUI();
+  show('s-sim');
+}
+
+function valScore(pe,ps){let s=0;if(pe!=null&&pe>0){if(pe<12)s+=0.018;else if(pe<20)s+=0.010;else if(pe<30)s+=0.003;else if(pe<50)s-=0.006;else if(pe<80)s-=0.014;else s-=0.022;}if(ps!=null&&ps>0){if(ps<1.5)s+=0.012;else if(ps<4)s+=0.005;else if(ps<10)s-=0.003;else if(ps<20)s-=0.010;else s-=0.016;}return s;}
+function qualScore(roe,gm,de,eps){let s=0;if(roe!=null){if(roe>30)s+=0.010;else if(roe>15)s+=0.005;else if(roe<0)s-=0.010;}if(gm!=null){if(gm>60)s+=0.008;else if(gm>30)s+=0.003;else if(gm<10)s-=0.006;}if(de!=null&&de>0){if(de<0.3)s+=0.005;else if(de>2)s-=0.008;else if(de>1)s-=0.004;}if(eps!=null){if(eps>20)s+=0.010;else if(eps>5)s+=0.004;else if(eps<0)s-=0.008;}return s;}
+function inferVol(beta,sec){const b=Math.abs(beta||1)*0.185;const a={'Technology':0.05,'Biotechnology':0.12,'Consumer Cyclical':0.03,'Energy':0.04,'Utilities':-0.06,'Consumer Staples':-0.05,'ETF':-0.04}[sec]||0;return Math.max(0.08,Math.min(0.85,b+a));}
+
+function buildSim(filled,mktKey,years){
+  const mkt=MKT[mktKey];
+  const sts=filled.map((s,i)=>{
+    const tickers=parseTickers(s.tickers);
+    const perStock=START/3;
+    const holdings=tickers.map(sym=>{
+      const d=getStock(sym);
+      return{sym,shares:perStock/d.p,price:d.p,startPrice:d.p,priceHistory:[d.p],data:{...d,sym}};
+    });
+    return{name:s.name.trim(),tickers,holdings,history:[START],color:COLORS[i%COLORS.length]};
+  });
+  const mktRets=[];let inCrash=false;
+  for(let y=0;y<years;y++){
+    if(!inCrash&&Math.random()<mkt.crashP)inCrash=true;else inCrash=false;
+    mktRets.push(inCrash?-0.18-Math.random()*0.16:mkt.drift+(Math.random()-0.45)*mkt.mag*2.5);
+  }
+  for(let y=0;y<years;y++){
+    const mktR=mktRets[y];
+    for(const st of sts){
+      let val=0;
+      for(const h of st.holdings){
+        const d=h.data;const beta=d.beta||1.0;
+        const r=(beta*(mktR-0.03))+valScore(d.pe,d.ps)+qualScore(d.roe,d.gm,d.de,d.eps)+(d.div||0)/100+((Math.random()-0.5)*2*inferVol(beta,d.sec)*0.55);
+        h.price=Math.max(0.01,h.price*(1+r));
+        h.priceHistory.push(Math.round(h.price*100)/100);
+        val+=h.shares*h.price;
+      }
+      st.history.push(Math.round(val));
+    }
+  }
+  return{students:sts,years,mktRets};
+}
+
+function yLabels(n){return['Start',...Array.from({length:n},(_,i)=>`Yr ${i+1}`)];}
+
+function buildUI(){
+  frame=0;playing=false;if(chart)chart.destroy();
+  chart=new Chart($('raceChart'),{
+    type:'line',
+    data:{labels:['Start'],datasets:sim.students.map(s=>({label:s.name,data:[s.history[0]],borderColor:s.color,backgroundColor:'transparent',tension:0.4,pointRadius:4,pointBackgroundColor:s.color,borderWidth:2.5}))},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${c.parsed.y.toLocaleString()}`},backgroundColor:'rgba(18,18,26,0.95)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#f0f0f8',bodyColor:'rgba(240,240,248,0.7)',padding:10}},
+      scales:{
+        y:{ticks:{callback:v=>'$'+(v>=1e6?(v/1e6).toFixed(2)+'M':(v/1e3).toFixed(0)+'K'),color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}},
+        x:{ticks:{color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{display:false},border:{display:false}}
+      }
+    }
+  });
+  renderLegend('legend');renderStandings(0);$('play-btn').textContent='Play';$('yr-num').textContent='0';
+}
+
+function renderLegend(id){
+  $(id).innerHTML=sim.students.map(s=>`<div class="leg-item"><span class="leg-dot" style="background:${s.color}"></span>${s.name} <span style="opacity:0.5;font-size:11px;font-family:var(--mono)">${s.tickers.join(' · ')}</span></div>`).join('');
+}
+
+function pc(m,v){if(v==null)return'na';if(m==='pe'){if(v<0)return'bad';if(v<18)return'good';if(v<35)return'ok';return'bad';}if(m==='ps'){if(v<2)return'good';if(v<8)return'ok';return'bad';}if(m==='beta'){if(v<0.7)return'good';if(v<1.3)return'ok';return'bad';}if(m==='div'){return v>2.5?'good':v>0?'ok':'na';}if(m==='roe'){if(v>25)return'good';if(v>10)return'ok';return'bad';}if(m==='eps'){if(v>15)return'good';if(v>0)return'ok';return'bad';}return'ok';}
+const fmt=(v,d=1)=>v!=null?v.toFixed(d):'N/A';
+
+function renderStandings(f){
+  const ranked=[...sim.students].map(s=>({...s,val:s.history[f]})).sort((a,b)=>b.val-a.val);
+  document.getElementById('standings').innerHTML=`<div class="lb-list">${ranked.map((s,i)=>{
+    const ret=((s.val-START)/START*100);
+    const cls=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-size:13px;color:var(--muted)">#${i+1}</span>`;
+    const col=s.val>=START?'#4de8a4':'#fa9a9a';
+    const pills=s.holdings.map(h=>{const d=h.data;return`<span style="font-size:10px;color:var(--muted);margin-right:10px">${d.sym}: <span class="pill ${pc('pe',d.pe)}">P/E ${fmt(d.pe)}</span> <span class="pill ${pc('ps',d.ps)}">P/S ${fmt(d.ps)}</span> <span class="pill ${pc('beta',d.beta)}">β ${fmt(d.beta)}</span> <span class="pill ${pc('div',d.div)}">Div ${fmt(d.div)}%</span> <span class="pill ${pc('roe',d.roe)}">ROE ${fmt(d.roe)}%</span></span>`;}).join('');
+    return`<div class="lb-row ${cls}">
+      <div class="lb-medal">${medal}</div>
+      <div class="lb-color" style="background:${s.color}"></div>
+      <div class="lb-info">
+        <div class="lb-name">${s.name}</div>
+        <div class="lb-tickers">${s.tickers.join(' · ')}</div>
+        <div class="lb-metrics">${pills}</div>
+      </div>
+      <div class="lb-right">
+        <div class="lb-val" style="color:${col}">$${s.val.toLocaleString()}</div>
+        <div class="lb-ret" style="color:${col}">${ret>=0?'+':''}${ret.toFixed(1)}%</div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function togglePlay(){
+  if(frame>=totalYears){resetSim();return;}
+  playing=!playing;
+  $('play-btn').textContent=playing?'Pause':'Play';
+  if(playing)tick();
+}
+
+function tick(){
+  if(!playing)return;
+  if(frame>=totalYears){playing=false;$('play-btn').textContent='Done';setTimeout(showEnd,600);return;}
+  frame++;
+  chart.data.labels=yLabels(totalYears).slice(0,frame+1);
+  chart.data.datasets.forEach((ds,i)=>{ds.data=sim.students[i].history.slice(0,frame+1);});
+  chart.update();
+  $('yr-num').textContent=frame;
+  renderStandings(frame);
+  timer=setTimeout(tick,parseInt($('sel-spd').value)||750);
+}
+
+function resetSim(){clearTimeout(timer);buildUI();}
+
+function showEnd(){
+  clearTimeout(timer);
+  const ranked=[...sim.students].map(s=>({...s,val:s.history[totalYears]})).sort((a,b)=>b.val-a.val);
+  const w=ranked[0];const ret=((w.val-START)/START*100);
+  $('win-name').textContent=`${w.name} wins!`;
+  $('win-value').innerHTML=`$${w.val.toLocaleString()} &nbsp;·&nbsp; <span style="color:#4de8a4">+${ret.toFixed(1)}%</span> return`;
+  $('win-picks').textContent=`Picks: ${w.tickers.join(', ')}`;
+
+  $('final-lb').innerHTML=`<div class="lb-list">${ranked.map((s,i)=>{
+    const r=((s.val-START)/START*100);const cls=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-size:13px;color:var(--muted)">#${i+1}</span>`;
+    const col=s.val>=START?'#4de8a4':'#fa9a9a';
+    return`<div class="lb-row ${cls}"><div class="lb-medal">${medal}</div><div class="lb-color" style="background:${s.color}"></div><div class="lb-info"><div class="lb-name">${s.name}</div><div class="lb-tickers">${s.tickers.join(' · ')}</div></div><div class="lb-right"><div class="lb-val" style="color:${col}">$${s.val.toLocaleString()}</div><div class="lb-ret" style="color:${col}">${r>=0?'+':''}${r.toFixed(1)}%</div></div></div>`;
+  }).join('')}</div>`;
+
+  renderLegend('end-legend');
+  new Chart($('endChart'),{
+    type:'line',
+    data:{labels:yLabels(totalYears),datasets:sim.students.map(s=>({label:s.name,data:s.history,borderColor:s.color,backgroundColor:'transparent',tension:0.4,pointRadius:2,borderWidth:2.5}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${c.parsed.y.toLocaleString()}`},backgroundColor:'rgba(18,18,26,0.95)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#f0f0f8',bodyColor:'rgba(240,240,248,0.7)',padding:10}},scales:{y:{ticks:{callback:v=>'$'+(v>=1e6?(v/1e6).toFixed(2)+'M':(v/1e3).toFixed(0)+'K'),color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}},x:{ticks:{color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{display:false},border:{display:false}}}}
+  });
+
+  const allTickers=[...new Set(sim.students.flatMap(s=>s.tickers))];
+  const rows=allTickers.map(sym=>{
+    const d=getStock(sym);
+    const est=d.estimated?'<span class="est-tag">est.</span>':'';
+    return`<tr>
+      <td class="ticker-cell">${sym}${est}</td>
+      <td class="company-cell">${d.name}</td>
+      <td style="font-family:var(--mono);font-size:12px">$${d.p}</td>
+      <td><span class="pill ${pc('pe',d.pe)}">${fmt(d.pe)}</span></td>
+      <td><span class="pill ${pc('ps',d.ps)}">${fmt(d.ps)}</span></td>
+      <td><span class="pill ${pc('beta',d.beta)}">${fmt(d.beta)}</span></td>
+      <td><span class="pill ${pc('div',d.div)}">${fmt(d.div)}%</span></td>
+      <td><span class="pill ${pc('roe',d.roe)}">${fmt(d.roe)}%</span></td>
+      <td><span class="pill ${pc('eps',d.eps)}">${fmt(d.eps)}%</span></td>
+      <td style="font-size:11px;color:var(--muted)">${d.sec}</td>
+    </tr>`;
+  }).join('');
+  $('metrics-table').innerHTML=`<table><thead><tr>${['Ticker','Company','Price','P/E','P/S','Beta','Div Yield','ROE','EPS Growth','Sector'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+
+  renderStockBreakdown(ranked);
+  show('s-end');
+}
+
+function renderStockBreakdown(ranked){
+  const perStock=START/3;
+  const html=ranked.map(s=>{
+    const totalVal=s.history[totalYears];
+    const totalRet=((totalVal-START)/START*100);
+    const totalCol=totalRet>=0?'#4de8a4':'#fa9a9a';
+
+    // find best return among this student's holdings for bar scaling
+    const rets=s.holdings.map(h=>((h.price-h.startPrice)/h.startPrice*100));
+    const maxAbs=Math.max(...rets.map(Math.abs),1);
+
+    const stockRows=s.holdings.map(h=>{
+      const ret=((h.price-h.startPrice)/h.startPrice*100);
+      const col=ret>=0?'#4de8a4':'#fa9a9a';
+      const barW=Math.min(100,Math.abs(ret)/maxAbs*100);
+      const barCol=ret>=0?'rgba(77,232,164,0.5)':'rgba(250,154,154,0.5)';
+      const finalVal=h.shares*h.price;
+      return`<div class="stock-row">
+        <div class="stock-bar-wrap">
+          <div class="stock-sym">${h.sym}</div>
+          <div class="stock-name-small">${h.data.name}</div>
+          <div class="stock-bar-track">
+            <div class="stock-bar-fill" style="width:${barW}%;background:${barCol}"></div>
+          </div>
+        </div>
+        <div class="stock-right">
+          <div class="stock-ret" style="color:${col}">${ret>=0?'+':''}${ret.toFixed(1)}%</div>
+          <div class="stock-final-price">$${h.price.toFixed(2)}</div>
+          <div class="stock-value">≈$${Math.round(finalVal).toLocaleString()}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return`<div class="breakdown-card">
+      <div class="breakdown-header">
+        <div class="breakdown-avatar" style="background:${s.color}"></div>
+        <div class="breakdown-student-name">${s.name}</div>
+        <div class="breakdown-total">
+          <div class="breakdown-total-val" style="color:${totalCol}">$${totalVal.toLocaleString()}</div>
+          <div class="breakdown-total-ret" style="color:${totalCol}">${totalRet>=0?'+':''}${totalRet.toFixed(1)}% total</div>
+        </div>
+      </div>
+      ${stockRows}
+    </div>`;
+  }).join('');
+
+  $('stock-breakdown').innerHTML=`<div class="breakdown-grid">${html}</div>`;
+}
+
+function replaySim(){clearTimeout(timer);buildUI();show('s-sim');playing=true;$('play-btn').textContent='Pause';tick();}
+function backToSetup(){clearTimeout(timer);sim=null;if(chart){chart.destroy();chart=null;}show('s-setup');}
+</script>
+</body>
+</html>
