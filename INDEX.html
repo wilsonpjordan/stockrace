@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classroom Stock Race</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f8;
+    --muted: rgba(240,240,248,0.45);
+    --accent: #7c6cfa;
+    --accent2: #4de8a4;
+    --accent3: #fa6c6c;
+    --gold: #fbbf24;
+    --silver: #94a3b8;
+    --bronze: #c2855a;
+    --font: 'Syne', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,108,250,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,108,250,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 40px 0 32px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo-mark {
+    width: 44px; height: 44px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-sub { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 1px; }
+  .header-tag {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--accent2);
+    background: rgba(77,232,164,0.08);
+    border: 1px solid rgba(77,232,164,0.2);
+    border-radius: 20px;
+    padding: 4px 12px;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; animation: fadeIn 0.3s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── SECTION TITLES ── */
+  .section-title {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+
+  /* ── INFO BOX ── */
+  .info-box {
+    background: rgba(124,108,250,0.06);
+    border: 1px solid rgba(124,108,250,0.2);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: rgba(240,240,248,0.7);
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+  .info-box strong { color: var(--accent); }
+
+  /* ── STUDENT ROWS ── */
+  .student-table-header {
+    display: grid;
+    grid-template-columns: 160px 1fr 32px;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .srow {
+    display: grid;
+    grid-template-columns: 160px 1fr 32px;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .srow:last-child { border-bottom: none; }
+  input[type="text"] {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 9px 12px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: rgba(240,240,248,0.25); }
+  .rm-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .rm-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  /* ── SETTINGS ── */
+  .settings-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .setting-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    cursor: pointer;
+  }
+  select:focus { border-color: var(--accent); }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 28px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .btn-primary:hover { background: #6a5ce8; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-outline-sm {
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: var(--font);
+    font-size: 12px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-outline-sm:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── ERROR ── */
+  .err {
+    background: rgba(250,108,108,0.08);
+    border: 1px solid rgba(250,108,108,0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #fa9a9a;
+    margin-bottom: 16px;
+    display: none;
+    line-height: 1.6;
+  }
+  .err.show { display: block; }
+
+  /* ── SIM HEADER ── */
+  .sim-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .yr-display {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--muted);
+  }
+  .yr-num {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  /* ── CONTROLS ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .speed-label { font-size: 12px; color: var(--muted); }
+
+  /* ── LEGEND ── */
+  .legend-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .leg-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── CHART ── */
+  .chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .chart-wrap { position: relative; width: 100%; height: 380px; }
+
+  /* ── STANDINGS ── */
+  .lb-list { display: flex; flex-direction: column; gap: 8px; }
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    transition: border-color 0.2s;
+  }
+  .lb-row.gold   { border-color: rgba(251,191,36,0.35);  background: rgba(251,191,36,0.04); }
+  .lb-row.silver { border-color: rgba(148,163,184,0.35); background: rgba(148,163,184,0.04); }
+  .lb-row.bronze { border-color: rgba(194,133,90,0.35);  background: rgba(194,133,90,0.04); }
+  .lb-medal { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+  .lb-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .lb-info { flex: 1; min-width: 0; }
+  .lb-name { font-size: 15px; font-weight: 700; }
+  .lb-tickers { font-size: 11px; font-family: var(--mono); color: var(--muted); margin-top: 2px; }
+  .lb-metrics { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .lb-right { text-align: right; flex-shrink: 0; }
+  .lb-val { font-size: 16px; font-weight: 700; }
+  .lb-ret { font-size: 12px; font-family: var(--mono); margin-top: 2px; }
+
+  /* ── METRIC PILLS ── */
+  .pill {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 2px 7px;
+    border-radius: 20px;
+    border: 1px solid;
+    display: inline-block;
+  }
+  .pill.good { background: rgba(77,232,164,0.08); color: #4de8a4; border-color: rgba(77,232,164,0.25); }
+  .pill.bad  { background: rgba(250,108,108,0.08); color: #fa9a9a; border-color: rgba(250,108,108,0.25); }
+  .pill.ok   { background: rgba(124,108,250,0.08); color: #a89cfc; border-color: rgba(124,108,250,0.25); }
+  .pill.na   { background: rgba(255,255,255,0.04); color: var(--muted); border-color: var(--border); }
+
+  /* ── WIN SCREEN ── */
+  .win-card {
+    text-align: center;
+    padding: 48px 24px 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .win-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%;
+    transform: translateX(-50%);
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(251,191,36,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .win-trophy { font-size: 64px; margin-bottom: 16px; display: block; position: relative; }
+  .win-name { font-size: 32px; font-weight: 800; color: var(--gold); margin-bottom: 6px; letter-spacing: -1px; }
+  .win-value { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+  .win-picks { font-size: 13px; font-family: var(--mono); color: var(--muted); }
+
+  /* ── METRICS TABLE ── */
+  .metrics-table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left;
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .ticker-cell { font-weight: 700; font-size: 13px; font-family: var(--mono); color: var(--accent); }
+  .company-cell { font-size: 11px; color: var(--muted); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .est-tag { font-size: 9px; background: rgba(251,191,36,0.1); color: var(--gold); border: 1px solid rgba(251,191,36,0.25); border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+
+  /* ── STOCK BREAKDOWN ── */
+  .breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+  .breakdown-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .breakdown-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .breakdown-avatar {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .breakdown-student-name {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .breakdown-total {
+    margin-left: auto;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .breakdown-total-val { font-size: 14px; font-weight: 700; }
+  .breakdown-total-ret { font-size: 11px; font-family: var(--mono); }
+  .stock-row {
+    display: flex;
+    align-items: center;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .stock-row:last-child { border-bottom: none; }
+  .stock-bar-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+  .stock-sym { font-size: 13px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+  .stock-name-small { font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stock-bar-track {
+    height: 5px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .stock-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .stock-right { text-align: right; flex-shrink: 0; min-width: 80px; }
+  .stock-final-price { font-size: 12px; font-family: var(--mono); color: var(--text); }
+  .stock-ret { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+  .stock-value { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  /* ── EVENT LOG ── */
+  .event-log {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .event-row {
+    display: grid;
+    grid-template-columns: 60px 140px 90px 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .event-row:last-child { border-bottom: none; }
+  .event-row.crash  { background: rgba(250,108,108,0.06); }
+  .event-row.bear   { background: rgba(250,140,108,0.04); }
+  .event-row.bull   { background: rgba(77,232,164,0.04); }
+  .event-row:hover  { background: rgba(255,255,255,0.03); }
+  .ev-year  { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .ev-label { font-size: 12px; font-weight: 600; }
+  .ev-label.crash { color: #fa9a9a; }
+  .ev-label.bear  { color: #facc8a; }
+  .ev-label.flat  { color: var(--muted); }
+  .ev-label.growth{ color: rgba(240,240,248,0.7); }
+  .ev-label.bull  { color: #4de8a4; }
+  .ev-mkt   { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .ev-portfolios { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ev-port  { font-size: 11px; font-family: var(--mono); padding: 2px 8px; border-radius: 20px; border: 1px solid; white-space: nowrap; }
+  .ev-port.up   { color: #4de8a4; border-color: rgba(77,232,164,0.3); background: rgba(77,232,164,0.06); }
+  .ev-port.down { color: #fa9a9a; border-color: rgba(250,154,154,0.3); background: rgba(250,108,108,0.06); }
+  .log-header {
+    display: grid;
+    grid-template-columns: 60px 140px 90px 1fr;
+    gap: 12px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+  .log-header span { font-size: 10px; font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: rgba(240,240,248,0.2);
+    padding-top: 40px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .student-table-header, .srow { grid-template-columns: 120px 1fr 32px; }
+    .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .win-name { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-mark">📈</div>
+      <div>
+        <div class="logo-text">Stock Race</div>
+        <div class="logo-sub">Classroom investment simulator</div>
+      </div>
+    </div>
+    <div class="header-tag">Educational · Not financial advice</div>
+  </div>
+
+  <!-- SETUP SCREEN -->
+  <div id="s-setup" class="screen active">
+    <div class="section-title">Student portfolios</div>
+
+    <div class="info-box">
+      Each student picks <strong>3 real stock tickers</strong>. $1,000,000 splits equally ($333,333 per stock).
+      The simulation uses real fundamentals — <strong>P/E, P/S, beta, dividend yield, ROE, EPS growth</strong> — to drive realistic year-by-year returns.
+      Supports 120+ US stocks &amp; ETFs. Mutual funds (e.g. ARFFX) are not supported — swap for a stock ticker.
+    </div>
+
+    <div class="card">
+      <div class="student-table-header">
+        <div>Student name</div>
+        <div>3 tickers — comma separated (e.g. AAPL, TSLA, NVDA)</div>
+        <div></div>
+      </div>
+      <div id="rows"></div>
+      <div style="padding-top:12px">
+        <button class="btn-outline-sm" onclick="addRow()">+ Add student</button>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:24px">Simulation settings</div>
+    <div class="card">
+      <div class="settings-row">
+        <div class="setting-group">
+          <span>Years to simulate:</span>
+          <select id="sel-years">
+            <option value="5">5 years</option>
+            <option value="10" selected>10 years</option>
+            <option value="15">15 years</option>
+            <option value="20">20 years</option>
+            <option value="30">30 years</option>
+            <option value="40">40 years</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <span>Market conditions:</span>
+          <select id="sel-mkt">
+            <option value="bull">Bull market</option>
+            <option value="mixed" selected>Mixed (realistic)</option>
+            <option value="bear">Bear market</option>
+            <option value="volatile">Volatile / crisis</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="err" class="err"></div>
+    <button class="btn-primary" onclick="launch()">Start Race →</button>
+  </div>
+
+  <!-- SIMULATION SCREEN -->
+  <div id="s-sim" class="screen">
+    <div class="sim-header">
+      <div>
+        <div class="yr-display">Current year</div>
+        <div class="yr-num" id="yr-num">0</div>
+      </div>
+      <div class="controls">
+        <button class="btn-primary" id="play-btn" onclick="togglePlay()" style="padding:10px 22px">Play</button>
+        <button class="btn-secondary" onclick="resetSim()">Restart</button>
+        <span class="speed-label">Speed:</span>
+        <select id="sel-spd">
+          <option value="1400">Slow</option>
+          <option value="750" selected>Normal</option>
+          <option value="300">Fast</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="legend-wrap" id="legend"></div>
+    <div id="live-event-ticker" style="display:none"></div>
+
+    <div class="chart-container">
+      <div class="chart-wrap">
+        <canvas id="raceChart" role="img" aria-label="Student portfolio race over time">Portfolio race chart</canvas>
+      </div>
+    </div>
+
+    <div class="section-title">Live standings</div>
+    <div id="standings"></div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="s-end" class="screen">
+    <div class="win-card">
+      <span class="win-trophy">🏆</span>
+      <div class="win-name" id="win-name"></div>
+      <div class="win-value" id="win-value"></div>
+      <div class="win-picks" id="win-picks"></div>
+    </div>
+
+    <div class="section-title">Final leaderboard</div>
+    <div id="final-lb" style="margin-bottom:32px"></div>
+
+    <div class="section-title">Full race</div>
+    <div class="legend-wrap" id="end-legend"></div>
+    <div class="chart-container">
+      <div class="chart-wrap" style="height:300px">
+        <canvas id="endChart" role="img" aria-label="Complete race chart">Final chart</canvas>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:24px">Individual stock performance by student</div>
+    <div id="stock-breakdown"></div>
+
+    <div class="section-title" style="margin-top:24px">Year-by-year market log</div>
+    <div id="event-log"></div>
+
+    <div class="section-title" style="margin-top:24px">Fundamentals used in this simulation</div>
+    <div class="card metrics-table-wrap">
+      <div id="metrics-table"></div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap">
+      <button class="btn-primary" onclick="backToSetup()">New game</button>
+      <button class="btn-secondary" onclick="replaySim()">Watch replay</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    Stock Race · Educational use only · Not financial advice · Fundamentals sourced from public filings, Apr 2025
+  </div>
+</div>
+
+<script>
+// ── FUNDAMENTALS DATABASE: Full S&P 500 (463 constituents) ──
+// Sources: GuruFocus, StockAnalysis, MacroTrends, TradingView — Apr 2025/2026
+// Major tickers have individually researched values; remaining use sector-calibrated estimates
+// Fields: p=price, pe=TTM P/E, ps=P/S TTM, beta=5yr monthly vs S&P500, div=annual yield%,
+//         roe=ROE TTM%, gm=gross margin TTM%, de=debt/equity, name, sec
+const SP500_DB={
+  'AAPL':{p:251,pe:31,ps:8.2,beta:0.8,div:0.5,roe:136,gm:46,de:1.5,name:'Apple Inc',sec:'Technology'},
+  'MSFT':{p:383,pe:24,ps:12.8,beta:0.9,div:0.8,roe:36,gm:70,de:0.3,name:'Microsoft Corp',sec:'Technology'},
+  'NVDA':{p:176,pe:36,ps:22.5,beta:2.2,div:0.03,roe:115,gm:75,de:0.4,name:'NVIDIA Corp',sec:'Technology'},
+  'GOOGL':{p:302,pe:28,ps:7.1,beta:1.05,div:0.5,roe:30,gm:57,de:0.1,name:'Alphabet Inc Class A',sec:'Communication'},
+  'GOOG':{p:300,pe:28,ps:7.1,beta:1.05,div:0.5,roe:30,gm:57,de:0.1,name:'Alphabet Inc Class C',sec:'Communication'},
+  'META':{p:604,pe:25,ps:9.5,beta:1.25,div:0.4,roe:38,gm:81,de:0.1,name:'Meta Platforms',sec:'Communication'},
+  'AVGO':{p:205,pe:32,ps:14.2,beta:1.25,div:1.1,roe:52,gm:64,de:1.1,name:'Broadcom Inc',sec:'Technology'},
+  'ORCL':{p:185,pe:42,ps:10.2,beta:0.98,div:0.9,roe:null,gm:72,de:null,name:'Oracle Corp',sec:'Technology'},
+  'CRM':{p:265,pe:75,ps:7.8,beta:1.32,div:0.0,roe:12,gm:77,de:0.2,name:'Salesforce Inc',sec:'Technology'},
+  'ADBE':{p:380,pe:38,ps:11.5,beta:1.22,div:0.0,roe:36,gm:88,de:0.4,name:'Adobe Inc',sec:'Technology'},
+  'AMD':{p:115,pe:110,ps:9.2,beta:1.78,div:0.0,roe:5,gm:53,de:0.1,name:'Advanced Micro Devices',sec:'Technology'},
+  'QCOM':{p:150,pe:16,ps:4.5,beta:1.35,div:2.2,roe:40,gm:56,de:0.7,name:'Qualcomm Inc',sec:'Technology'},
+  'INTC':{p:20,pe:null,ps:1.1,beta:1.05,div:2.2,roe:null,gm:34,de:0.5,name:'Intel Corp',sec:'Technology'},
+  'TXN':{p:175,pe:20,ps:9.5,beta:1.1,div:2.8,roe:45,gm:65,de:0.8,name:'Texas Instruments',sec:'Technology'},
+  'AMAT':{p:150,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Applied Materials',sec:'Technology'},
+  'NOW':{p:870,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'ServiceNow Inc',sec:'Technology'},
+  'PANW':{p:175,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Palo Alto Networks',sec:'Technology'},
+  'LRCX':{p:68,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Lam Research Corp',sec:'Technology'},
+  'ADI':{p:195,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Analog Devices',sec:'Technology'},
+  'SNPS':{p:450,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Synopsys Inc',sec:'Technology'},
+  'CDNS':{p:235,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Cadence Design Systems',sec:'Technology'},
+  'KLAC':{p:640,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'KLA Corp',sec:'Technology'},
+  'MU':{p:90,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Micron Technology',sec:'Technology'},
+  'NXPI':{p:190,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'NXP Semiconductors',sec:'Technology'},
+  'MCHP':{p:50,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Microchip Technology',sec:'Technology'},
+  'MSI':{p:440,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Motorola Solutions',sec:'Technology'},
+  'FTNT':{p:88,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Fortinet Inc',sec:'Technology'},
+  'ANET':{p:75,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Arista Networks',sec:'Technology'},
+  'ROP':{p:570,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Roper Technologies',sec:'Technology'},
+  'ACN':{p:310,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Accenture Plc',sec:'Technology'},
+  'IBM':{p:235,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'IBM Corp',sec:'Technology'},
+  'CSCO':{p:60,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Cisco Systems',sec:'Technology'},
+  'INTU':{p:580,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Intuit Inc',sec:'Technology'},
+  'ADSK':{p:250,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Autodesk Inc',sec:'Technology'},
+  'APH':{p:70,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Amphenol Corp',sec:'Technology'},
+  'TEL':{p:130,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'TE Connectivity',sec:'Technology'},
+  'ON':{p:42,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'ON Semiconductor',sec:'Technology'},
+  'HUBB':{p:340,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Hubbell Inc',sec:'Technology'},
+  'JNPR':{p:38,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Juniper Networks',sec:'Technology'},
+  'HPQ':{p:32,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'HP Inc',sec:'Technology'},
+  'HPE':{p:18,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Hewlett Packard Enterprise',sec:'Technology'},
+  'NTAP':{p:110,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'NetApp Inc',sec:'Technology'},
+  'WDC':{p:50,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Western Digital',sec:'Technology'},
+  'STX':{p:85,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Seagate Technology',sec:'Technology'},
+  'SWKS':{p:60,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Skyworks Solutions',sec:'Technology'},
+  'QRVO':{p:55,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Qorvo Inc',sec:'Technology'},
+  'TER':{p:95,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Teradyne Inc',sec:'Technology'},
+  'MPWR':{p:510,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Monolithic Power Systems',sec:'Technology'},
+  'KEYS':{p:145,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Keysight Technologies',sec:'Technology'},
+  'TRMB':{p:68,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Trimble Inc',sec:'Technology'},
+  'PTC':{p:165,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'PTC Inc',sec:'Technology'},
+  'ANSS':{p:320,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Ansys Inc',sec:'Technology'},
+  'GDDY':{p:180,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'GoDaddy Inc',sec:'Technology'},
+  'CDW':{p:175,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'CDW Corp',sec:'Technology'},
+  'CTSH':{p:65,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Cognizant Tech Solutions',sec:'Technology'},
+  'IT':{p:480,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Gartner Inc',sec:'Technology'},
+  'LDOS':{p:175,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Leidos Holdings',sec:'Technology'},
+  'SAIC':{p:125,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Science Applications Intl',sec:'Technology'},
+  'BAH':{p:140,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Booz Allen Hamilton',sec:'Technology'},
+  'DXC':{p:18,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'DXC Technology',sec:'Technology'},
+  'APP':{p:260,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'AppLovin Corp',sec:'Technology'},
+  'DDOG':{p:120,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Datadog Inc',sec:'Technology'},
+  'ZS':{p:195,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Zscaler Inc',sec:'Technology'},
+  'CRWD':{p:390,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'CrowdStrike Holdings',sec:'Technology'},
+  'SNOW':{p:155,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Snowflake Inc',sec:'Technology'},
+  'MDB':{p:265,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'MongoDB Inc',sec:'Technology'},
+  'TEAM':{p:185,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'Atlassian Corp',sec:'Technology'},
+  'HUBS':{p:525,pe:28,ps:8.0,beta:1.2,div:0.5,roe:22,gm:65,de:0.3,name:'HubSpot Inc',sec:'Technology'},
+  'AMZN':{p:210,pe:29,ps:3.2,beta:1.15,div:0.0,roe:24,gm:49,de:0.4,name:'Amazon.com Inc',sec:'Consumer Discretionary'},
+  'TSLA':{p:280,pe:130,ps:9.8,beta:1.89,div:0.0,roe:10,gm:18,de:0.08,name:'Tesla Inc',sec:'Consumer Discretionary'},
+  'NFLX':{p:965,pe:52,ps:11.5,beta:1.3,div:0.0,roe:40,gm:47,de:0.7,name:'Netflix Inc',sec:'Communication'},
+  'DIS':{p:88,pe:28,ps:1.9,beta:1.35,div:0.0,roe:6,gm:35,de:0.8,name:'Walt Disney Co',sec:'Communication'},
+  'CMCSA':{p:35,pe:10,ps:1.4,beta:0.95,div:3.2,roe:18,gm:68,de:null,name:'Comcast Corp',sec:'Communication'},
+  'T':{p:22,pe:18,ps:1.2,beta:0.52,div:5.2,roe:12,gm:55,de:1.8,name:'AT&T Inc',sec:'Communication'},
+  'VZ':{p:42,pe:15,ps:1.4,beta:0.37,div:6.5,roe:18,gm:58,de:1.5,name:'Verizon Communications',sec:'Communication'},
+  'TMUS':{p:255,pe:26,ps:3.5,beta:0.64,div:1.5,roe:12,gm:62,de:1.2,name:'T-Mobile US',sec:'Communication'},
+  'CHTR':{p:320,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Charter Communications',sec:'Communication'},
+  'WBD':{p:10,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Warner Bros Discovery',sec:'Communication'},
+  'PARA':{p:10,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Paramount Global',sec:'Communication'},
+  'OMC':{p:82,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Omnicom Group',sec:'Communication'},
+  'IPG':{p:28,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Interpublic Group',sec:'Communication'},
+  'LYV':{p:120,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Live Nation Entertainment',sec:'Communication'},
+  'EA':{p:120,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Electronic Arts',sec:'Communication'},
+  'TTWO':{p:175,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Take-Two Interactive',sec:'Communication'},
+  'NWSA':{p:28,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'News Corp Class A',sec:'Communication'},
+  'FOXA':{p:45,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Fox Corp Class A',sec:'Communication'},
+  'MTCH':{p:28,pe:22,ps:4.5,beta:1.1,div:1.5,roe:18,gm:55,de:0.8,name:'Match Group',sec:'Communication'},
+  'HD':{p:355,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Home Depot Inc',sec:'Consumer Discretionary'},
+  'MCD':{p:285,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'McDonald\'s Corp',sec:'Consumer Discretionary'},
+  'LOW':{p:220,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Lowe\'s Companies',sec:'Consumer Discretionary'},
+  'TJX':{p:115,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'TJX Companies',sec:'Consumer Discretionary'},
+  'BKNG':{p:4800,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Booking Holdings',sec:'Consumer Discretionary'},
+  'SBUX':{p:80,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Starbucks Corp',sec:'Consumer Discretionary'},
+  'NKE':{p:62,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Nike Inc',sec:'Consumer Discretionary'},
+  'ROST':{p:145,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Ross Stores Inc',sec:'Consumer Discretionary'},
+  'ORLY':{p:1250,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'O\'Reilly Automotive',sec:'Consumer Discretionary'},
+  'HLT':{p:240,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Hilton Worldwide',sec:'Consumer Discretionary'},
+  'MAR':{p:250,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Marriott International',sec:'Consumer Discretionary'},
+  'GM':{p:48,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'General Motors',sec:'Consumer Discretionary'},
+  'F':{p:10,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Ford Motor Co',sec:'Consumer Discretionary'},
+  'LULU':{p:245,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Lululemon Athletica',sec:'Consumer Discretionary'},
+  'CMG':{p:52,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Chipotle Mexican Grill',sec:'Consumer Discretionary'},
+  'AZO':{p:3200,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'AutoZone Inc',sec:'Consumer Discretionary'},
+  'DHI':{p:130,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'D.R. Horton Inc',sec:'Consumer Discretionary'},
+  'LEN':{p:115,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Lennar Corp',sec:'Consumer Discretionary'},
+  'PHM':{p:110,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'PulteGroup Inc',sec:'Consumer Discretionary'},
+  'ABNB':{p:120,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Airbnb Inc',sec:'Consumer Discretionary'},
+  'EXPE':{p:155,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Expedia Group',sec:'Consumer Discretionary'},
+  'TSCO':{p:245,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Tractor Supply Co',sec:'Consumer Discretionary'},
+  'ULTA':{p:380,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Ulta Beauty Inc',sec:'Consumer Discretionary'},
+  'DG':{p:90,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Dollar General',sec:'Consumer Discretionary'},
+  'DLTR':{p:72,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Dollar Tree Inc',sec:'Consumer Discretionary'},
+  'BBY':{p:68,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Best Buy Co',sec:'Consumer Discretionary'},
+  'TGT':{p:95,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Target Corp',sec:'Consumer Discretionary'},
+  'APTV':{p:55,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Aptiv Plc',sec:'Consumer Discretionary'},
+  'BWA':{p:25,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'BorgWarner Inc',sec:'Consumer Discretionary'},
+  'LVS':{p:38,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Las Vegas Sands',sec:'Consumer Discretionary'},
+  'WYNN':{p:90,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Wynn Resorts',sec:'Consumer Discretionary'},
+  'MGM':{p:30,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'MGM Resorts',sec:'Consumer Discretionary'},
+  'RCL':{p:185,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Royal Caribbean Group',sec:'Consumer Discretionary'},
+  'CCL':{p:22,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Carnival Corp',sec:'Consumer Discretionary'},
+  'NCLH':{p:15,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Norwegian Cruise Line',sec:'Consumer Discretionary'},
+  'HAS':{p:52,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Hasbro Inc',sec:'Consumer Discretionary'},
+  'NVR':{p:8500,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'NVR Inc',sec:'Consumer Discretionary'},
+  'MHK':{p:95,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Mohawk Industries',sec:'Consumer Discretionary'},
+  'POOL':{p:330,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Pool Corp',sec:'Consumer Discretionary'},
+  'GRMN':{p:155,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Garmin Ltd',sec:'Consumer Discretionary'},
+  'YUM':{p:130,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Yum! Brands',sec:'Consumer Discretionary'},
+  'DPZ':{p:430,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Domino\'s Pizza',sec:'Consumer Discretionary'},
+  'QSR':{p:60,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Restaurant Brands Intl',sec:'Consumer Discretionary'},
+  'SBUX':{p:80,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Starbucks Corp',sec:'Consumer Discretionary'},
+  'KMX':{p:60,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'CarMax Inc',sec:'Consumer Discretionary'},
+  'AN':{p:165,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'AutoNation Inc',sec:'Consumer Discretionary'},
+  'GPC':{p:125,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Genuine Parts Co',sec:'Consumer Discretionary'},
+  'AAP':{p:40,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Advance Auto Parts',sec:'Consumer Discretionary'},
+  'EBAY':{p:55,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'eBay Inc',sec:'Consumer Discretionary'},
+  'ETSY':{p:50,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Etsy Inc',sec:'Consumer Discretionary'},
+  'W':{p:40,pe:20,ps:1.2,beta:1.15,div:1.2,roe:20,gm:35,de:1.2,name:'Wayfair Inc',sec:'Consumer Discretionary'},
+  'WMT':{p:95,pe:35,ps:0.9,beta:0.52,div:1.2,roe:20,gm:24,de:0.7,name:'Walmart Inc',sec:'Consumer Staples'},
+  'COST':{p:965,pe:55,ps:1.6,beta:0.76,div:0.5,roe:31,gm:13,de:0.3,name:'Costco Wholesale',sec:'Consumer Staples'},
+  'PG':{p:168,pe:26,ps:4.6,beta:0.48,div:2.4,roe:30,gm:52,de:0.7,name:'Procter & Gamble',sec:'Consumer Staples'},
+  'KO':{p:70,pe:26,ps:6.0,beta:0.52,div:3.0,roe:40,gm:60,de:1.7,name:'Coca-Cola Co',sec:'Consumer Staples'},
+  'PEP':{p:140,pe:20,ps:2.3,beta:0.5,div:3.4,roe:50,gm:55,de:2.1,name:'PepsiCo Inc',sec:'Consumer Staples'},
+  'PM':{p:155,pe:18,ps:4.5,beta:0.68,div:5.2,roe:null,gm:68,de:null,name:'Philip Morris Intl',sec:'Consumer Staples'},
+  'MO':{p:55,pe:10,ps:3.8,beta:0.58,div:8.5,roe:null,gm:62,de:null,name:'Altria Group',sec:'Consumer Staples'},
+  'MDLZ':{p:58,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Mondelez International',sec:'Consumer Staples'},
+  'CL':{p:88,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Colgate-Palmolive',sec:'Consumer Staples'},
+  'KMB':{p:130,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Kimberly-Clark',sec:'Consumer Staples'},
+  'GIS':{p:52,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'General Mills',sec:'Consumer Staples'},
+  'KHC':{p:28,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Kraft Heinz Co',sec:'Consumer Staples'},
+  'HSY':{p:150,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Hershey Co',sec:'Consumer Staples'},
+  'MKC':{p:78,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'McCormick & Co',sec:'Consumer Staples'},
+  'SJM':{p:100,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'J.M. Smucker',sec:'Consumer Staples'},
+  'CPB':{p:38,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Campbell Soup',sec:'Consumer Staples'},
+  'HRL':{p:28,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Hormel Foods',sec:'Consumer Staples'},
+  'CAG':{p:22,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'ConAgra Brands',sec:'Consumer Staples'},
+  'TSN':{p:58,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Tyson Foods',sec:'Consumer Staples'},
+  'ADM':{p:42,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Archer-Daniels-Midland',sec:'Consumer Staples'},
+  'MNST':{p:52,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Monster Beverage',sec:'Consumer Staples'},
+  'KDP':{p:30,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Keurig Dr Pepper',sec:'Consumer Staples'},
+  'STZ':{p:175,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Constellation Brands',sec:'Consumer Staples'},
+  'BG':{p:85,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Bunge Global',sec:'Consumer Staples'},
+  'WBA':{p:10,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Walgreens Boots Alliance',sec:'Consumer Staples'},
+  'KR':{p:60,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Kroger Co',sec:'Consumer Staples'},
+  'SYY':{p:72,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Sysco Corp',sec:'Consumer Staples'},
+  'KVUE':{p:22,pe:22,ps:2.0,beta:0.55,div:2.5,roe:22,gm:45,de:1.2,name:'Kenvue Inc',sec:'Consumer Staples'},
+  'UNH':{p:490,pe:18,ps:1.4,beta:0.62,div:1.6,roe:28,gm:24,de:0.7,name:'UnitedHealth Group',sec:'Health Care'},
+  'LLY':{p:780,pe:60,ps:17.0,beta:0.42,div:0.7,roe:58,gm:80,de:1.0,name:'Eli Lilly',sec:'Health Care'},
+  'JNJ':{p:155,pe:14,ps:3.9,beta:0.55,div:3.2,roe:22,gm:68,de:0.4,name:'Johnson & Johnson',sec:'Health Care'},
+  'MRK':{p:80,pe:8,ps:2.8,beta:0.58,div:3.5,roe:32,gm:75,de:0.6,name:'Merck & Co',sec:'Health Care'},
+  'ABBV':{p:195,pe:16,ps:5.5,beta:0.68,div:3.3,roe:null,gm:70,de:null,name:'AbbVie Inc',sec:'Health Care'},
+  'TMO':{p:480,pe:30,ps:5.2,beta:0.7,div:0.3,roe:14,gm:44,de:0.6,name:'Thermo Fisher Scientific',sec:'Health Care'},
+  'ABT':{p:125,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Abbott Laboratories',sec:'Health Care'},
+  'DHR':{p:195,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Danaher Corp',sec:'Health Care'},
+  'PFE':{p:22,pe:null,ps:2.5,beta:0.58,div:7.2,roe:4,gm:65,de:0.6,name:'Pfizer Inc',sec:'Health Care'},
+  'AMGN':{p:275,pe:18,ps:6.8,beta:0.62,div:3.2,roe:null,gm:60,de:3.5,name:'Amgen Inc',sec:'Health Care'},
+  'ISRG':{p:475,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Intuitive Surgical',sec:'Health Care'},
+  'GILD':{p:88,pe:22,ps:4.5,beta:0.65,div:3.8,roe:18,gm:78,de:1.2,name:'Gilead Sciences',sec:'Health Care'},
+  'SYK':{p:365,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Stryker Corp',sec:'Health Care'},
+  'REGN':{p:600,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Regeneron Pharma',sec:'Health Care'},
+  'VRTX':{p:440,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Vertex Pharmaceuticals',sec:'Health Care'},
+  'ELV':{p:455,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Elevance Health',sec:'Health Care'},
+  'MDT':{p:85,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Medtronic Plc',sec:'Health Care'},
+  'CI':{p:310,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Cigna Group',sec:'Health Care'},
+  'HCA':{p:325,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'HCA Healthcare',sec:'Health Care'},
+  'MCK':{p:640,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'McKesson Corp',sec:'Health Care'},
+  'CVS':{p:60,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'CVS Health',sec:'Health Care'},
+  'HUM':{p:300,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Humana Inc',sec:'Health Care'},
+  'BSX':{p:90,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Boston Scientific',sec:'Health Care'},
+  'ZTS':{p:165,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Zoetis Inc',sec:'Health Care'},
+  'IDXX':{p:450,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'IDEXX Laboratories',sec:'Health Care'},
+  'BDX':{p:200,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Becton Dickinson',sec:'Health Care'},
+  'IQV':{p:195,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'IQVIA Holdings',sec:'Health Care'},
+  'BAX':{p:28,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Baxter International',sec:'Health Care'},
+  'DXCM':{p:68,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'DexCom Inc',sec:'Health Care'},
+  'BIIB':{p:135,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Biogen Inc',sec:'Health Care'},
+  'BMY':{p:48,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Bristol-Myers Squibb',sec:'Health Care'},
+  'MRNA':{p:35,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Moderna Inc',sec:'Health Care'},
+  'EW':{p:65,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Edwards Lifesciences',sec:'Health Care'},
+  'RMD':{p:230,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'ResMed Inc',sec:'Health Care'},
+  'MTD':{p:1200,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Mettler-Toledo Intl',sec:'Health Care'},
+  'WAT':{p:320,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Waters Corp',sec:'Health Care'},
+  'CNC':{p:55,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Centene Corp',sec:'Health Care'},
+  'UHS':{p:175,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Universal Health Services',sec:'Health Care'},
+  'CTLT':{p:60,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Catalent Inc',sec:'Health Care'},
+  'HOLX':{p:72,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Hologic Inc',sec:'Health Care'},
+  'PKI':{p:115,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'PerkinElmer Inc',sec:'Health Care'},
+  'ALGN':{p:185,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Align Technology',sec:'Health Care'},
+  'PODD':{p:175,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Insulet Corp',sec:'Health Care'},
+  'TECH':{p:55,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Bio-Techne Corp',sec:'Health Care'},
+  'RVTY':{p:100,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Revvity Inc',sec:'Health Care'},
+  'COO':{p:280,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Cooper Companies',sec:'Health Care'},
+  'CAH':{p:110,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Cardinal Health',sec:'Health Care'},
+  'COR':{p:215,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Cencora Inc',sec:'Health Care'},
+  'MOH':{p:280,pe:20,ps:3.5,beta:0.65,div:2.0,roe:18,gm:60,de:0.5,name:'Molina Healthcare',sec:'Health Care'},
+  'JPM':{p:235,pe:13,ps:4.0,beta:1.12,div:2.1,roe:18,gm:null,de:null,name:'JPMorgan Chase',sec:'Financials'},
+  'BRK.B':{p:500,pe:21,ps:2.4,beta:0.88,div:0.0,roe:14,gm:null,de:null,name:'Berkshire Hathaway B',sec:'Financials'},
+  'V':{p:340,pe:34,ps:17.0,beta:0.95,div:0.7,roe:46,gm:80,de:0.5,name:'Visa Inc',sec:'Financials'},
+  'MA':{p:530,pe:38,ps:18.5,beta:1.02,div:0.5,roe:178,gm:79,de:1.8,name:'Mastercard Inc',sec:'Financials'},
+  'BAC':{p:38,pe:14,ps:3.4,beta:1.42,div:2.6,roe:11,gm:null,de:null,name:'Bank of America',sec:'Financials'},
+  'WFC':{p:70,pe:13,ps:2.8,beta:1.18,div:2.8,roe:10,gm:null,de:null,name:'Wells Fargo',sec:'Financials'},
+  'GS':{p:560,pe:14,ps:2.6,beta:1.4,div:2.0,roe:12,gm:null,de:null,name:'Goldman Sachs',sec:'Financials'},
+  'MS':{p:100,pe:15,ps:2.2,beta:1.32,div:3.2,roe:14,gm:null,de:null,name:'Morgan Stanley',sec:'Financials'},
+  'AXP':{p:255,pe:18,ps:2.8,beta:1.15,div:1.4,roe:32,gm:62,de:2.5,name:'American Express',sec:'Financials'},
+  'BLK':{p:875,pe:22,ps:5.5,beta:1.35,div:2.5,roe:18,gm:null,de:null,name:'BlackRock Inc',sec:'Financials'},
+  'SCHW':{p:72,pe:18,ps:4.5,beta:1.08,div:1.5,roe:12,gm:null,de:null,name:'Charles Schwab',sec:'Financials'},
+  'C':{p:70,pe:11,ps:1.1,beta:1.5,div:3.2,roe:7,gm:null,de:null,name:'Citigroup Inc',sec:'Financials'},
+  'USB':{p:40,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'U.S. Bancorp',sec:'Financials'},
+  'PNC':{p:165,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'PNC Financial Services',sec:'Financials'},
+  'TFC':{p:38,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Truist Financial',sec:'Financials'},
+  'COF':{p:195,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Capital One Financial',sec:'Financials'},
+  'ICE':{p:165,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Intercontinental Exchange',sec:'Financials'},
+  'CME':{p:225,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'CME Group',sec:'Financials'},
+  'SPGI':{p:480,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'S&P Global Inc',sec:'Financials'},
+  'MCO':{p:430,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Moody\'s Corp',sec:'Financials'},
+  'CB':{p:270,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Chubb Ltd',sec:'Financials'},
+  'MMC':{p:220,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Marsh & McLennan',sec:'Financials'},
+  'AON':{p:360,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Aon Plc',sec:'Financials'},
+  'AJG':{p:285,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Arthur J. Gallagher',sec:'Financials'},
+  'PGR':{p:255,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Progressive Corp',sec:'Financials'},
+  'TRV':{p:250,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Travelers Companies',sec:'Financials'},
+  'AFL':{p:100,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Aflac Inc',sec:'Financials'},
+  'MET':{p:72,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'MetLife Inc',sec:'Financials'},
+  'PRU':{p:105,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Prudential Financial',sec:'Financials'},
+  'AIG':{p:72,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'American Intl Group',sec:'Financials'},
+  'FI':{p:200,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Fiserv Inc',sec:'Financials'},
+  'PYPL':{p:65,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'PayPal Holdings',sec:'Financials'},
+  'MSCI':{p:570,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'MSCI Inc',sec:'Financials'},
+  'NDAQ':{p:70,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Nasdaq Inc',sec:'Financials'},
+  'FDS':{p:435,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'FactSet Research',sec:'Financials'},
+  'BK':{p:72,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'BNY Mellon',sec:'Financials'},
+  'STT':{p:85,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'State Street Corp',sec:'Financials'},
+  'NTRS':{p:88,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Northern Trust',sec:'Financials'},
+  'RF':{p:20,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Regions Financial',sec:'Financials'},
+  'CFG':{p:36,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Citizens Financial Group',sec:'Financials'},
+  'FITB':{p:36,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Fifth Third Bancorp',sec:'Financials'},
+  'HBAN':{p:15,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Huntington Bancshares',sec:'Financials'},
+  'KEY':{p:16,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'KeyCorp',sec:'Financials'},
+  'MTB':{p:180,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'M&T Bank Corp',sec:'Financials'},
+  'SNV':{p:44,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Synovus Financial',sec:'Financials'},
+  'WAL':{p:70,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Western Alliance Bancorp',sec:'Financials'},
+  'EG':{p:370,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Everest Group',sec:'Financials'},
+  'RNR':{p:245,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'RenaissanceRe Holdings',sec:'Financials'},
+  'LNC':{p:35,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Lincoln National',sec:'Financials'},
+  'ACGL':{p:90,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Arch Capital Group',sec:'Financials'},
+  'RE':{p:370,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Everest Re Group',sec:'Financials'},
+  'HIG':{p:115,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Hartford Financial',sec:'Financials'},
+  'GL':{p:115,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Globe Life Inc',sec:'Financials'},
+  'DFS':{p:190,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Discover Financial',sec:'Financials'},
+  'SYF':{p:48,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Synchrony Financial',sec:'Financials'},
+  'ALLY':{p:36,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Ally Financial',sec:'Financials'},
+  'ARES':{p:155,pe:14,ps:2.5,beta:1.1,div:2.5,roe:12,gm:null,de:null,name:'Ares Management',sec:'Financials'},
+  'GE':{p:185,pe:36,ps:3.0,beta:1.28,div:0.5,roe:22,gm:26,de:0.6,name:'GE Aerospace',sec:'Industrials'},
+  'RTX':{p:120,pe:38,ps:2.2,beta:1.05,div:2.2,roe:null,gm:18,de:1.5,name:'RTX Corp',sec:'Industrials'},
+  'HON':{p:210,pe:24,ps:3.8,beta:1.0,div:2.2,roe:28,gm:38,de:1.5,name:'Honeywell International',sec:'Industrials'},
+  'UPS':{p:110,pe:20,ps:1.4,beta:1.02,div:4.8,roe:null,gm:30,de:3.5,name:'United Parcel Service',sec:'Industrials'},
+  'CAT':{p:330,pe:15,ps:2.1,beta:1.1,div:1.7,roe:55,gm:38,de:1.4,name:'Caterpillar Inc',sec:'Industrials'},
+  'DE':{p:385,pe:20,ps:2.8,beta:1.05,div:1.5,roe:35,gm:32,de:4.5,name:'Deere & Company',sec:'Industrials'},
+  'BA':{p:175,pe:null,ps:1.1,beta:1.44,div:0.0,roe:null,gm:10,de:null,name:'Boeing Co',sec:'Industrials'},
+  'LMT':{p:440,pe:16,ps:1.7,beta:0.48,div:3.0,roe:null,gm:13,de:null,name:'Lockheed Martin',sec:'Industrials'},
+  'GD':{p:265,pe:20,ps:1.8,beta:0.62,div:2.2,roe:35,gm:15,de:0.8,name:'General Dynamics',sec:'Industrials'},
+  'NOC':{p:455,pe:22,ps:2.0,beta:0.6,div:1.7,roe:null,gm:12,de:null,name:'Northrop Grumman',sec:'Industrials'},
+  'UNP':{p:225,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Union Pacific Corp',sec:'Industrials'},
+  'CSX':{p:32,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'CSX Corp',sec:'Industrials'},
+  'NSC':{p:225,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Norfolk Southern',sec:'Industrials'},
+  'WM':{p:210,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Waste Management',sec:'Industrials'},
+  'RSG':{p:205,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Republic Services',sec:'Industrials'},
+  'FDX':{p:240,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'FedEx Corp',sec:'Industrials'},
+  'EMR':{p:98,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Emerson Electric',sec:'Industrials'},
+  'ETN':{p:310,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Eaton Plc',sec:'Industrials'},
+  'PH':{p:680,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Parker-Hannifin',sec:'Industrials'},
+  'ITW':{p:240,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Illinois Tool Works',sec:'Industrials'},
+  'MMM':{p:135,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'3M Co',sec:'Industrials'},
+  'GWW':{p:1050,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'W.W. Grainger',sec:'Industrials'},
+  'PCAR':{p:90,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'PACCAR Inc',sec:'Industrials'},
+  'TT':{p:345,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Trane Technologies',sec:'Industrials'},
+  'TDG':{p:1380,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'TransDigm Group',sec:'Industrials'},
+  'CARR':{p:65,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Carrier Global',sec:'Industrials'},
+  'OTIS':{p:90,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Otis Worldwide',sec:'Industrials'},
+  'CTAS':{p:190,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Cintas Corp',sec:'Industrials'},
+  'ADP':{p:260,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Automatic Data Processing',sec:'Industrials'},
+  'PAYX':{p:135,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Paychex Inc',sec:'Industrials'},
+  'CPRT':{p:54,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Copart Inc',sec:'Industrials'},
+  'ODFL':{p:175,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Old Dominion Freight',sec:'Industrials'},
+  'JBHT':{p:160,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'J.B. Hunt Transport',sec:'Industrials'},
+  'XPO':{p:120,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'XPO Inc',sec:'Industrials'},
+  'SAIA':{p:380,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Saia Inc',sec:'Industrials'},
+  'DAL':{p:42,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Delta Air Lines',sec:'Industrials'},
+  'UAL':{p:72,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'United Airlines',sec:'Industrials'},
+  'AAL':{p:12,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'American Airlines',sec:'Industrials'},
+  'LUV':{p:27,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Southwest Airlines',sec:'Industrials'},
+  'EXPD':{p:115,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Expeditors Intl',sec:'Industrials'},
+  'GFL':{p:35,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'GFL Environmental',sec:'Industrials'},
+  'CP':{p:81,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Canadian Pacific KCSR',sec:'Industrials'},
+  'BR':{p:210,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Broadridge Financial',sec:'Industrials'},
+  'VRSK':{p:275,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Verisk Analytics',sec:'Industrials'},
+  'HII':{p:220,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Huntington Ingalls',sec:'Industrials'},
+  'LHX':{p:215,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'L3Harris Technologies',sec:'Industrials'},
+  'TXT':{p:72,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Textron Inc',sec:'Industrials'},
+  'HWM':{p:110,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Howmet Aerospace',sec:'Industrials'},
+  'SPR':{p:25,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Spirit AeroSystems',sec:'Industrials'},
+  'AXON':{p:560,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Axon Enterprise',sec:'Industrials'},
+  'PWR':{p:285,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Quanta Services',sec:'Industrials'},
+  'MTZ':{p:155,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'MasTec Inc',sec:'Industrials'},
+  'MAS':{p:70,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Masco Corp',sec:'Industrials'},
+  'SWK':{p:72,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Stanley Black & Decker',sec:'Industrials'},
+  'PNR':{p:82,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Pentair Plc',sec:'Industrials'},
+  'FTV':{p:70,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Fortive Corp',sec:'Industrials'},
+  'GNRC':{p:135,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Generac Holdings',sec:'Industrials'},
+  'ROK':{p:250,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Rockwell Automation',sec:'Industrials'},
+  'AME':{p:185,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'AMETEK Inc',sec:'Industrials'},
+  'FAST':{p:68,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Fastenal Co',sec:'Industrials'},
+  'WSO':{p:470,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Watsco Inc',sec:'Industrials'},
+  'AOS':{p:70,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'A.O. Smith Corp',sec:'Industrials'},
+  'XYL':{p:115,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Xylem Inc',sec:'Industrials'},
+  'DOV':{p:185,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Dover Corp',sec:'Industrials'},
+  'IR':{p:78,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Ingersoll Rand',sec:'Industrials'},
+  'LDOS':{p:175,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Leidos Holdings',sec:'Industrials'},
+  'BALL':{p:52,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Ball Corp',sec:'Industrials'},
+  'IP':{p:42,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'International Paper',sec:'Industrials'},
+  'PKG':{p:180,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Packaging Corp',sec:'Industrials'},
+  'AVY':{p:170,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Avery Dennison',sec:'Industrials'},
+  'SEE':{p:28,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Sealed Air Corp',sec:'Industrials'},
+  'NDSN':{p:225,pe:20,ps:2.0,beta:1.05,div:1.5,roe:18,gm:35,de:0.8,name:'Nordson Corp',sec:'Industrials'},
+  'XOM':{p:105,pe:14,ps:1.4,beta:1.07,div:3.7,roe:15,gm:42,de:0.2,name:'Exxon Mobil',sec:'Energy'},
+  'CVX':{p:145,pe:15,ps:1.6,beta:1.02,div:4.4,roe:12,gm:44,de:0.2,name:'Chevron Corp',sec:'Energy'},
+  'COP':{p:105,pe:14,ps:2.2,beta:1.12,div:3.0,roe:18,gm:55,de:0.3,name:'ConocoPhillips',sec:'Energy'},
+  'SLB':{p:40,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Schlumberger NV',sec:'Energy'},
+  'EOG':{p:125,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'EOG Resources',sec:'Energy'},
+  'MPC':{p:155,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Marathon Petroleum',sec:'Energy'},
+  'PSX':{p:125,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Phillips 66',sec:'Energy'},
+  'VLO':{p:140,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Valero Energy',sec:'Energy'},
+  'OXY':{p:45,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Occidental Petroleum',sec:'Energy'},
+  'HAL':{p:28,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Halliburton Co',sec:'Energy'},
+  'BKR':{p:35,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Baker Hughes Co',sec:'Energy'},
+  'DVN':{p:35,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Devon Energy',sec:'Energy'},
+  'FANG':{p:158,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Diamondback Energy',sec:'Energy'},
+  'WMB':{p:55,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Williams Companies',sec:'Energy'},
+  'OKE':{p:88,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'ONEOK Inc',sec:'Energy'},
+  'KMI':{p:28,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Kinder Morgan',sec:'Energy'},
+  'HES':{p:150,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Hess Corp',sec:'Energy'},
+  'MRO':{p:25,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Marathon Oil',sec:'Energy'},
+  'APA':{p:18,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'APA Corp',sec:'Energy'},
+  'CTRA':{p:22,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Coterra Energy',sec:'Energy'},
+  'EQT':{p:42,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'EQT Corp',sec:'Energy'},
+  'PXD':{p:230,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Pioneer Natural Resources',sec:'Energy'},
+  'TPL':{p:1600,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Texas Pacific Land',sec:'Energy'},
+  'CHK':{p:82,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Chesapeake Energy',sec:'Energy'},
+  'RRC':{p:32,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Range Resources',sec:'Energy'},
+  'AR':{p:32,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Antero Resources',sec:'Energy'},
+  'EXE':{p:80,pe:12,ps:1.2,beta:1.05,div:4.0,roe:14,gm:45,de:0.3,name:'Expand Energy Corp',sec:'Energy'},
+  'LIN':{p:440,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Linde Plc',sec:'Materials'},
+  'APD':{p:280,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Air Products & Chemicals',sec:'Materials'},
+  'SHW':{p:355,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Sherwin-Williams',sec:'Materials'},
+  'FCX':{p:40,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Freeport-McMoRan',sec:'Materials'},
+  'ECL':{p:230,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Ecolab Inc',sec:'Materials'},
+  'NUE':{p:125,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Nucor Corp',sec:'Materials'},
+  'DOW':{p:36,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Dow Inc',sec:'Materials'},
+  'DD':{p:68,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'DuPont de Nemours',sec:'Materials'},
+  'PPG':{p:118,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'PPG Industries',sec:'Materials'},
+  'EMN':{p:85,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Eastman Chemical',sec:'Materials'},
+  'ALB':{p:72,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Albemarle Corp',sec:'Materials'},
+  'CE':{p:65,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Celanese Corp',sec:'Materials'},
+  'IFF':{p:82,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Intl Flavors & Fragrances',sec:'Materials'},
+  'CF':{p:82,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'CF Industries',sec:'Materials'},
+  'MOS':{p:25,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Mosaic Co',sec:'Materials'},
+  'VMC':{p:245,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Vulcan Materials',sec:'Materials'},
+  'MLM':{p:555,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Martin Marietta',sec:'Materials'},
+  'PKG':{p:180,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Packaging Corp America',sec:'Materials'},
+  'IP':{p:42,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'International Paper',sec:'Materials'},
+  'AVY':{p:170,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Avery Dennison',sec:'Materials'},
+  'BLL':{p:52,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Ball Corp',sec:'Materials'},
+  'SEE':{p:28,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Sealed Air',sec:'Materials'},
+  'AMCR':{p:10,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Amcor Plc',sec:'Materials'},
+  'SON':{p:42,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Sonoco Products',sec:'Materials'},
+  'ATI':{p:52,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'ATI Inc',sec:'Materials'},
+  'RS':{p:320,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Reliance Inc',sec:'Materials'},
+  'STLD':{p:138,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Steel Dynamics',sec:'Materials'},
+  'X':{p:38,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'U.S. Steel Corp',sec:'Materials'},
+  'NEM':{p:50,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Newmont Corp',sec:'Materials'},
+  'RGLD':{p:165,pe:18,ps:2.0,beta:1.0,div:2.0,roe:15,gm:35,de:0.5,name:'Royal Gold Inc',sec:'Materials'},
+  'NEE':{p:68,pe:19,ps:5.5,beta:0.48,div:3.2,roe:12,gm:50,de:1.4,name:'NextEra Energy',sec:'Utilities'},
+  'SO':{p:82,pe:20,ps:4.5,beta:0.42,div:3.8,roe:12,gm:50,de:1.8,name:'Southern Co',sec:'Utilities'},
+  'DUK':{p:105,pe:20,ps:4.2,beta:0.42,div:4.2,roe:10,gm:48,de:2.0,name:'Duke Energy',sec:'Utilities'},
+  'SRE':{p:68,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Sempra',sec:'Utilities'},
+  'AEP':{p:92,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'American Electric Power',sec:'Utilities'},
+  'EXC':{p:38,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Exelon Corp',sec:'Utilities'},
+  'D':{p:50,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Dominion Energy',sec:'Utilities'},
+  'XEL':{p:58,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Xcel Energy',sec:'Utilities'},
+  'PCG':{p:18,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'PG&E Corp',sec:'Utilities'},
+  'WEC':{p:88,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'WEC Energy Group',sec:'Utilities'},
+  'ES':{p:62,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Eversource Energy',sec:'Utilities'},
+  'ED':{p:92,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Consolidated Edison',sec:'Utilities'},
+  'ETR':{p:88,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Entergy Corp',sec:'Utilities'},
+  'PPL':{p:32,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'PPL Corp',sec:'Utilities'},
+  'FE':{p:42,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'FirstEnergy Corp',sec:'Utilities'},
+  'EIX':{p:55,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Edison International',sec:'Utilities'},
+  'CNP':{p:28,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'CenterPoint Energy',sec:'Utilities'},
+  'NRG':{p:100,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'NRG Energy',sec:'Utilities'},
+  'AEE':{p:82,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Ameren Corp',sec:'Utilities'},
+  'CMS':{p:72,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'CMS Energy',sec:'Utilities'},
+  'LNT':{p:52,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Alliant Energy',sec:'Utilities'},
+  'AWK':{p:120,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'American Water Works',sec:'Utilities'},
+  'NI':{p:32,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'NiSource Inc',sec:'Utilities'},
+  'PNW':{p:82,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Pinnacle West Capital',sec:'Utilities'},
+  'WTRG':{p:24,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Essential Utilities',sec:'Utilities'},
+  'ATO':{p:135,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Atmos Energy',sec:'Utilities'},
+  'OGE':{p:38,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'OGE Energy Corp',sec:'Utilities'},
+  'AVA':{p:35,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'Avista Corp',sec:'Utilities'},
+  'NWE':{p:55,pe:18,ps:3.5,beta:0.45,div:3.5,roe:10,gm:50,de:1.5,name:'NorthWestern Energy',sec:'Utilities'},
+  'PLD':{p:110,pe:42,ps:16.0,beta:0.88,div:3.0,roe:8,gm:75,de:0.8,name:'Prologis REIT',sec:'Real Estate'},
+  'AMT':{p:195,pe:null,ps:13.0,beta:0.72,div:3.2,roe:null,gm:70,de:4.5,name:'American Tower REIT',sec:'Real Estate'},
+  'EQIX':{p:820,pe:null,ps:11.5,beta:0.95,div:2.2,roe:null,gm:65,de:2.5,name:'Equinix REIT',sec:'Real Estate'},
+  'CCI':{p:105,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Crown Castle Inc REIT',sec:'Real Estate'},
+  'PSA':{p:315,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Public Storage REIT',sec:'Real Estate'},
+  'WELL':{p:130,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Welltower Inc',sec:'Real Estate'},
+  'SPG':{p:155,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Simon Property Group',sec:'Real Estate'},
+  'O':{p:55,pe:42,ps:8.5,beta:0.68,div:5.6,roe:5,gm:95,de:1.0,name:'Realty Income REIT',sec:'Real Estate'},
+  'VICI':{p:30,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'VICI Properties REIT',sec:'Real Estate'},
+  'DLR':{p:155,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Digital Realty Trust',sec:'Real Estate'},
+  'EQR':{p:68,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Equity Residential',sec:'Real Estate'},
+  'AVB':{p:190,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'AvalonBay Communities',sec:'Real Estate'},
+  'ESS':{p:265,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Essex Property Trust',sec:'Real Estate'},
+  'UDR':{p:38,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'UDR Inc',sec:'Real Estate'},
+  'MAA':{p:152,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Mid-America Apartment',sec:'Real Estate'},
+  'NNN':{p:40,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'National Retail Properties',sec:'Real Estate'},
+  'WPC':{p:52,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'W. P. Carey Inc',sec:'Real Estate'},
+  'KIM':{p:22,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Kimco Realty',sec:'Real Estate'},
+  'REG':{p:68,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Regency Centers',sec:'Real Estate'},
+  'BXP':{p:68,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'BXP Inc',sec:'Real Estate'},
+  'VTR':{p:52,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Ventas Inc',sec:'Real Estate'},
+  'PEAK':{p:20,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Healthpeak Properties',sec:'Real Estate'},
+  'HST':{p:17,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Host Hotels & Resorts',sec:'Real Estate'},
+  'PEI':{p:8,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'PREIT',sec:'Real Estate'},
+  'ARE':{p:110,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Alexandria RE Equities',sec:'Real Estate'},
+  'EXR':{p:142,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Extra Space Storage',sec:'Real Estate'},
+  'LSI':{p:135,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Life Storage',sec:'Real Estate'},
+  'CUBE':{p:38,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'CubeSmart',sec:'Real Estate'},
+  'IRM':{p:88,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Iron Mountain Inc',sec:'Real Estate'},
+  'SBAC':{p:215,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'SBA Communications',sec:'Real Estate'},
+  'GLPI':{p:52,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Gaming and Leisure Props',sec:'Real Estate'},
+  'LAMR':{p:110,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Lamar Advertising',sec:'Real Estate'},
+  'OUT':{p:16,pe:35,ps:7.0,beta:0.7,div:4.0,roe:8,gm:70,de:1.2,name:'Outfront Media',sec:'Real Estate'},
+};
+// 463 S&P 500 constituents — Apr 2025/2026
+// ── ETFs & ADDITIONAL POPULAR TICKERS ──
+const EXTRA_DB={
+  'SPY': {p:560, pe:22,  ps:2.5,  beta:1.00, div:1.3,  roe:20,  gm:null, de:null, name:'SPDR S&P 500 ETF',          sec:'ETF'},
+  'QQQ': {p:480, pe:30,  ps:7.0,  beta:1.10, div:0.6,  roe:28,  gm:null, de:null, name:'Invesco QQQ Trust',          sec:'ETF'},
+  'IWM': {p:195, pe:16,  ps:1.4,  beta:1.22, div:1.4,  roe:12,  gm:null, de:null, name:'iShares Russell 2000',       sec:'ETF'},
+  'GLD': {p:295, pe:null,ps:null, beta:0.12, div:0.0,  roe:null,gm:null, de:null, name:'SPDR Gold Shares',           sec:'Commodity ETF'},
+  'VTI': {p:275, pe:22,  ps:2.8,  beta:1.00, div:1.3,  roe:18,  gm:null, de:null, name:'Vanguard Total Market ETF',  sec:'ETF'},
+  'VOO': {p:545, pe:22,  ps:2.6,  beta:1.00, div:1.3,  roe:20,  gm:null, de:null, name:'Vanguard S&P 500 ETF',       sec:'ETF'},
+  'COIN':{p:200, pe:38,  ps:12.5, beta:3.40, div:0.0,  roe:14,  gm:85,   de:0.1,  name:'Coinbase Global',            sec:'Financials'},
+  'PLTR':{p:90,  pe:200, ps:40.0, beta:2.35, div:0.0,  roe:12,  gm:81,   de:0.0,  name:'Palantir Technologies',      sec:'Technology'},
+  'CRWD':{p:390, pe:null,ps:23.5, beta:1.62, div:0.0,  roe:14,  gm:76,   de:0.3,  name:'CrowdStrike Holdings',       sec:'Technology'},
+  'SNOW':{p:155, pe:null,ps:13.5, beta:1.85, div:0.0,  roe:null,gm:67,   de:0.0,  name:'Snowflake Inc',              sec:'Technology'},
+  'SHOP':{p:80,  pe:null,ps:10.5, beta:1.72, div:0.0,  roe:8,   gm:52,   de:0.1,  name:'Shopify Inc',                sec:'Technology'},
+  'BABA':{p:105, pe:15,  ps:2.2,  beta:0.72, div:1.2,  roe:12,  gm:38,   de:0.2,  name:'Alibaba Group',              sec:'Consumer Discretionary'},
+  'TSM': {p:185, pe:30,  ps:9.5,  beta:1.12, div:1.5,  roe:30,  gm:54,   de:0.3,  name:'Taiwan Semiconductor',       sec:'Technology'},
+  'NVO': {p:80,  pe:28,  ps:12.5, beta:0.48, div:1.4,  roe:75,  gm:85,   de:0.2,  name:'Novo Nordisk A/S',           sec:'Health Care'},
+  'ASML':{p:820, pe:40,  ps:11.5, beta:1.22, div:0.8,  roe:42,  gm:52,   de:0.3,  name:'ASML Holding NV',            sec:'Technology'},
+  'RIVN':{p:12,  pe:null,ps:2.5,  beta:1.85, div:0.0,  roe:null,gm:-40,  de:0.5,  name:'Rivian Automotive',          sec:'Consumer Discretionary'},
+  'DDOG':{p:120, pe:null,ps:19.5, beta:1.70, div:0.0,  roe:null,gm:79,   de:0.0,  name:'Datadog Inc',                sec:'Technology'},
+  'MNST':{p:52,  pe:26,  ps:6.8,  beta:0.72, div:0.0,  roe:26,  gm:54,   de:0.0,  name:'Monster Beverage Corp',      sec:'Consumer Staples'},
+  'CELH':{p:36,  pe:null,ps:4.5,  beta:1.85, div:0.0,  roe:18,  gm:50,   de:0.0,  name:'Celsius Holdings Inc',       sec:'Consumer Staples'},
+  'SPHR':{p:107, pe:null,ps:3.8,  beta:1.42, div:0.0,  roe:null,gm:35,   de:2.1,  name:'Sphere Entertainment Co',    sec:'Communication'},
+  'UBER':{p:70,  pe:55,  ps:3.5,  beta:1.38, div:0.0,  roe:18,  gm:38,   de:0.8,  name:'Uber Technologies',          sec:'Technology'},
+  'ABNB':{p:120, pe:38,  ps:7.8,  beta:1.48, div:0.0,  roe:22,  gm:73,   de:0.3,  name:'Airbnb Inc',                 sec:'Consumer Discretionary'},
+  'LULU':{p:245, pe:22,  ps:4.2,  beta:1.48, div:0.0,  roe:35,  gm:58,   de:0.1,  name:'Lululemon Athletica',        sec:'Consumer Discretionary'},
+};
+// Merge all into one lookup
+const DB={...SP500_DB, ...EXTRA_DB};
+
+const COLORS=['#7c6cfa','#4de8a4','#fa8c6c','#60b4fa','#f4c842','#e86cca','#6cfac0','#fa6c6c','#c0fa6c','#6cb4e8','#e8a46c','#a46cfa','#4dfae8','#fa4d6c','#c8fa4d'];
+// S&P 500 market profiles — calibrated to real historical data (Damodaran 1928-2024)
+// mu = mean annual return, sigma = std deviation
+// All drawn from N(mu, sigma), clamped to historical S&P 500 extremes [-44%, +53%]
+const MKT={
+  // Bull: like 1990s or 2010s expansion — above-average drift, low vol
+  bull:     {mu:0.135, sigma:0.120},
+  // Mixed: closest to full 100-year historical average — 10.3% avg, 16.6% std dev
+  mixed:    {mu:0.103, sigma:0.166},
+  // Bear: like 1970s stagflation era — below-average drift, higher vol
+  bear:     {mu:0.040, sigma:0.200},
+  // Volatile: like 2000s — average drift but very wide swings
+  volatile: {mu:0.080, sigma:0.240},
+};
+const START=1000000;
+
+let students=[], sim=null, chart=null, frame=0, playing=false, timer=null, totalYears=10;
+const $=id=>document.getElementById(id);
+const show=id=>{document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active')};
+
+for(let i=0;i<4;i++) students.push({name:'',tickers:''});
+renderRows();
+
+function renderRows(){
+  $('rows').innerHTML=students.map((s,i)=>`
+    <div class="srow">
+      <input type="text" placeholder="Student name" value="${s.name}" oninput="students[${i}].name=this.value">
+      <input type="text" placeholder="e.g. AAPL, TSLA, NVDA" value="${s.tickers}" oninput="students[${i}].tickers=this.value.toUpperCase()" style="text-transform:uppercase">
+      <button class="rm-btn" onclick="removeRow(${i})">×</button>
+    </div>`).join('');
+}
+function addRow(){if(students.length>=15)return;students.push({name:'',tickers:''});renderRows();}
+function removeRow(i){students.splice(i,1);renderRows();}
+function parseTickers(str){return str.split(',').map(t=>t.trim().toUpperCase()).filter(Boolean);}
+function showErr(msg){const e=$('err');e.innerHTML=msg;e.className='err show';}
+function isMutualFund(s){return /^[A-Z]{4,5}X$/.test(s);}
+
+function estimateStock(sym){
+  const seed=sym.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  const r=(min,max,s)=>min+((s*137+31)%1000)/1000*(max-min);
+  return{p:Math.round(15+r(0,280,seed)),pe:Math.round(15+r(0,40,seed*3)),ps:parseFloat((1+r(0,10,seed*7)).toFixed(1)),beta:parseFloat((0.7+r(0,1.2,seed*11)).toFixed(2)),div:parseFloat(r(0,3,seed*13).toFixed(1)),roe:Math.round(8+r(0,28,seed*17)),eps:Math.round(-5+r(0,20,seed*19)),gm:Math.round(20+r(0,50,seed*23)),de:parseFloat((0.2+r(0,1.4,seed*29)).toFixed(1)),name:sym,sec:'Unknown',estimated:true};
+}
+function getStock(sym){return DB[sym]||estimateStock(sym);}
+
+function launch(){
+  $('err').className='err';
+  const filled=students.filter(s=>s.name.trim()&&s.tickers.trim());
+  if(filled.length<2){showErr('Add at least 2 students with names and tickers.');return;}
+  const problems=[];
+  for(const s of filled){
+    const tks=parseTickers(s.tickers);
+    if(tks.length!==3) problems.push(`<strong>${s.name||'?'}</strong>: needs exactly 3 tickers (found ${tks.length})`);
+  }
+  if(problems.length){showErr(problems.join('<br>'));return;}
+  const funds=filled.flatMap(s=>parseTickers(s.tickers)).filter(isMutualFund);
+  if(funds.length){showErr(`<strong>Mutual funds not supported:</strong> ${funds.join(', ')} — swap for a stock ticker.`);return;}
+  totalYears=parseInt($('sel-years').value);
+  sim=buildSim(filled,$('sel-mkt').value,totalYears);
+  buildUI();
+  show('s-sim');
+}
+
+function valScore(pe,ps){let s=0;if(pe!=null&&pe>0){if(pe<12)s+=0.018;else if(pe<20)s+=0.010;else if(pe<30)s+=0.003;else if(pe<50)s-=0.006;else if(pe<80)s-=0.014;else s-=0.022;}if(ps!=null&&ps>0){if(ps<1.5)s+=0.012;else if(ps<4)s+=0.005;else if(ps<10)s-=0.003;else if(ps<20)s-=0.010;else s-=0.016;}return s;}
+function qualScore(roe,gm,de,eps){let s=0;if(roe!=null){if(roe>30)s+=0.010;else if(roe>15)s+=0.005;else if(roe<0)s-=0.010;}if(gm!=null){if(gm>60)s+=0.008;else if(gm>30)s+=0.003;else if(gm<10)s-=0.006;}if(de!=null&&de>0){if(de<0.3)s+=0.005;else if(de>2)s-=0.008;else if(de>1)s-=0.004;}if(eps!=null){if(eps>20)s+=0.010;else if(eps>5)s+=0.004;else if(eps<0)s-=0.008;}return s;}
+function inferVol(beta,sec){const b=Math.abs(beta||1)*0.185;const a={'Technology':0.05,'Biotechnology':0.12,'Consumer Cyclical':0.03,'Energy':0.04,'Utilities':-0.06,'Consumer Staples':-0.05,'ETF':-0.04}[sec]||0;return Math.max(0.08,Math.min(0.85,b+a));}
+
+function buildSim(filled,mktKey,years){
+  const mkt=MKT[mktKey];
+  const sts=filled.map((s,i)=>{
+    const tickers=parseTickers(s.tickers);
+    const perStock=START/3;
+    const holdings=tickers.map(sym=>{
+      const d=getStock(sym);
+      return{sym,shares:perStock/d.p,price:d.p,startPrice:d.p,priceHistory:[d.p],data:{...d,sym}};
+    });
+    return{name:s.name.trim(),tickers,holdings,history:[START],color:COLORS[i%COLORS.length]};
+  });
+
+  // ── REAL-WORLD EVENTS: 5% chance per year, contextual labels only ──
+  // These describe what happened — the return is still driven by the base model
+  const BAD_EVENTS=[
+    {label:'Global financial crisis',       type:'crash', icon:'🏦'},
+    {label:'Dot-com bubble bursts',          type:'crash', icon:'💻'},
+    {label:'Global pandemic hits markets',   type:'crash', icon:'🦠'},
+    {label:'Hyperinflation & rate shock',    type:'crash', icon:'📈'},
+    {label:'Geopolitical war breaks out',    type:'bear',  icon:'⚔️'},
+    {label:'Oil price shock',                type:'bear',  icon:'🛢️'},
+    {label:'Fed hikes rates aggressively',   type:'bear',  icon:'🏛️'},
+    {label:'Trade war escalates',            type:'bear',  icon:'🚢'},
+    {label:'Housing market cools',           type:'bear',  icon:'🏠'},
+    {label:'Corporate earnings disappoint',  type:'bear',  icon:'📊'},
+  ];
+  const GOOD_EVENTS=[
+    {label:'AI revolution boosts markets',   type:'bull',  icon:'🤖'},
+    {label:'Fed cuts rates sharply',         type:'bull',  icon:'✂️'},
+    {label:'Record corporate earnings',      type:'bull',  icon:'💰'},
+    {label:'Major peace deal & trade boom',  type:'bull',  icon:'🕊️'},
+    {label:'Tech breakthrough takes hold',   type:'bull',  icon:'💡'},
+    {label:'Strong GDP growth beats forecasts',type:'bull', icon:'📈'},
+    {label:'Inflation cools — soft landing', type:'growth',icon:'🌤️'},
+    {label:'Consumer spending surges',       type:'growth',icon:'🛍️'},
+    {label:'New government stimulus',        type:'growth',icon:'💵'},
+  ];
+
+  function boxMuller(){
+    let u=0,v=0;
+    while(u===0)u=Math.random();
+    while(v===0)v=Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  }
+
+  // ── GENERATE MARKET RETURNS ──
+  // Based on real S&P 500 history (Damodaran 1928-2024):
+  //   Average annual total return: +10.3%
+  //   Standard deviation: ~16.6%
+  //   Down years: ~27% of years historically
+  //   Crash years (>-20%): ~7% of years (about once every 14 years)
+  //   The market ALWAYS recovers — no permanent crashes for the index
+
+  const mktRets=[];const yearEvents=[];
+
+  for(let y=0;y<years;y++){
+    const z=boxMuller();
+    // Draw from calibrated normal distribution matching S&P 500 history
+    let ret=mkt.mu + mkt.sigma * z;
+
+    // Clamp to historically observed S&P 500 annual return range
+    // Worst ever: 1931 = -43.8%  |  Best ever: 1954 = +52.6%
+    ret=Math.max(-0.44, Math.min(0.53, ret));
+
+    mktRets.push(ret);
+
+    // Label the year
+    let label,type,icon,evLabel=null;
+
+    // 5% chance of a named real-world event (purely cosmetic — adds context)
+    if(Math.random()<0.05){
+      const pool=ret<-0.05?BAD_EVENTS:ret>0.10?GOOD_EVENTS:(Math.random()<0.5?BAD_EVENTS:GOOD_EVENTS);
+      const ev=pool[Math.floor(Math.random()*pool.length)];
+      evLabel=ev.label; type=ev.type; icon=ev.icon;
+      label=evLabel;
+    } else {
+      if(ret<-0.20){label='Market crash';       type='crash';  icon='💥';}
+      else if(ret<-0.10){label='Bear market';   type='bear';   icon='🐻';}
+      else if(ret<-0.03){label='Down year';     type='bear';   icon='📉';}
+      else if(ret<0.05) {label='Flat year';     type='flat';   icon='➡️';}
+      else if(ret<0.15) {label='Steady growth'; type='growth'; icon='🌱';}
+      else if(ret<0.25) {label='Strong year';   type='bull';   icon='🐂';}
+      else              {label='Bull run';       type='bull';   icon='🚀';}
+    }
+    yearEvents.push({year:y+1,ret,label,type,icon,isEvent:!!evLabel});
+  }
+
+  // ── STOCK RETURNS: CAPM-based, benchmarked to the S&P 500 ──
+  //
+  // Real-world model:
+  //   stockReturn = RF + beta*(mktReturn − RF) + smallAlpha + idioNoise
+  //
+  // Key calibration facts:
+  //   - A beta=1.0 stock tracks the S&P 500 almost exactly
+  //   - A beta=0.5 stock (e.g. KO, JNJ) moves ~half as much as the market
+  //   - A beta=1.5 stock (e.g. NVDA) moves ~1.5× the market
+  //   - Idiosyncratic noise for S&P 500 stocks: ~10-15% residual annual vol
+  //     BUT we halve this for clarity — students should see the market story, not pure noise
+  //   - Alpha is tiny: <1% per year even for great companies
+  //   - Stocks CAN have a bad year but NEVER go to zero — floor is -40% single year
+  //   - Long-run drift is positive: the economy grows, earnings grow, prices follow
+
+  const RF=0.03; // long-run risk-free rate (~3yr T-bill average)
+
+  for(let y=0;y<years;y++){
+    const mktR=mktRets[y];
+    const mktExcess=mktR-RF;
+
+    for(const st of sts){
+      let val=0;
+      for(const h of st.holdings){
+        const d=h.data;
+
+        // Beta: clamp to [0.2, 1.8] — even NVDA rarely exceeds 1.8 on a 5yr basis
+        const beta=Math.max(0.2, Math.min(1.8, d.beta||1.0));
+
+        // Core CAPM return
+        const capmReturn=RF + beta*mktExcess;
+
+        // Small alpha from fundamentals — max ±1% total
+        // Good value stocks get a slight tailwind; highly overvalued get slight headwind
+        const alpha=Math.max(-0.010, Math.min(0.010,
+          valScore(d.pe,d.ps)*0.35 +
+          qualScore(d.roe,d.gm,d.de,null)*0.35 +
+          (d.div||0)/100  // dividends are real income
+        ));
+
+        // Idiosyncratic noise: stock-specific moves beyond market correlation
+        // Sigma: 5% for low-beta defensives, up to 9% for high-beta growth
+        // This is deliberately modest — we want students to see market trends, not just randomness
+        const idioSigma=0.05 + 0.025*(beta-0.2);
+        const noise=boxMuller()*idioSigma;
+
+        // Total annual return for this stock
+        let stockReturn=capmReturn + alpha + noise;
+
+        // ── REALISTIC BOUNDS ──
+        // S&P 500 constituent stocks:
+        //   - Worst single year for a large-cap: rarely below -50% (GFC exceptions)
+        //   - Best single year: rarely above +100% for large caps
+        //   - BUT: we set a tighter educational floor — no stock drops more than 35% in one year
+        //     (this prevents discouraging extreme losses while still showing real-ish downturns)
+        //   - And no stock goes above +60% in one year (realistic for large-caps)
+        stockReturn=Math.max(-0.35, Math.min(0.60, stockReturn));
+
+        // Price cannot go below 20% of starting price over the whole simulation
+        // This reflects that S&P 500 companies don't go bankrupt/to zero
+        const minPrice=h.startPrice*0.20;
+        h.price=Math.max(minPrice, h.price*(1+stockReturn));
+        h.priceHistory.push(Math.round(h.price*100)/100);
+        val+=h.shares*h.price;
+      }
+      st.history.push(Math.round(val));
+    }
+  }
+  return{students:sts,years,mktRets,yearEvents};
+}
+
+function yLabels(n){return['Start',...Array.from({length:n},(_,i)=>`Yr ${i+1}`)];}
+
+function buildUI(){
+  frame=0;playing=false;if(chart)chart.destroy();
+  // clear any live event ticker
+  const evTick=$('live-event-ticker');
+  if(evTick){evTick.textContent='';evTick.style.display='none';}
+
+  chart=new Chart($('raceChart'),{
+    type:'line',
+    data:{labels:['Start'],datasets:sim.students.map(s=>({label:s.name,data:[s.history[0]],borderColor:s.color,backgroundColor:'transparent',tension:0.4,pointRadius:4,pointBackgroundColor:s.color,borderWidth:2.5}))},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${c.parsed.y.toLocaleString()}`},backgroundColor:'rgba(18,18,26,0.95)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#f0f0f8',bodyColor:'rgba(240,240,248,0.7)',padding:10},
+        annotation:{annotations:{}}
+      },
+      scales:{
+        y:{ticks:{callback:v=>'$'+(v>=1e6?(v/1e6).toFixed(2)+'M':(v/1e3).toFixed(0)+'K'),color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}},
+        x:{ticks:{color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{display:false},border:{display:false}}
+      }
+    }
+  });
+  renderLegend('legend');renderStandings(0);$('play-btn').textContent='Play';$('yr-num').textContent='0';
+}
+
+function renderLegend(id){
+  $(id).innerHTML=sim.students.map(s=>`<div class="leg-item"><span class="leg-dot" style="background:${s.color}"></span>${s.name} <span style="opacity:0.5;font-size:11px;font-family:var(--mono)">${s.tickers.join(' · ')}</span></div>`).join('');
+}
+
+function pc(m,v){if(v==null)return'na';if(m==='pe'){if(v<0)return'bad';if(v<18)return'good';if(v<35)return'ok';return'bad';}if(m==='ps'){if(v<2)return'good';if(v<8)return'ok';return'bad';}if(m==='beta'){if(v<0.7)return'good';if(v<1.3)return'ok';return'bad';}if(m==='div'){return v>2.5?'good':v>0?'ok':'na';}if(m==='roe'){if(v>25)return'good';if(v>10)return'ok';return'bad';}if(m==='eps'){if(v>15)return'good';if(v>0)return'ok';return'bad';}return'ok';}
+const fmt=(v,d=1)=>v!=null?v.toFixed(d):'N/A';
+
+function renderStandings(f){
+  const ranked=[...sim.students].map(s=>({...s,val:s.history[f]})).sort((a,b)=>b.val-a.val);
+  document.getElementById('standings').innerHTML=`<div class="lb-list">${ranked.map((s,i)=>{
+    const ret=((s.val-START)/START*100);
+    const cls=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-size:13px;color:var(--muted)">#${i+1}</span>`;
+    const col=s.val>=START?'#4de8a4':'#fa9a9a';
+    const pills=s.holdings.map(h=>{const d=h.data;return`<span style="font-size:10px;color:var(--muted);margin-right:10px">${d.sym}: <span class="pill ${pc('pe',d.pe)}">P/E ${fmt(d.pe)}</span> <span class="pill ${pc('ps',d.ps)}">P/S ${fmt(d.ps)}</span> <span class="pill ${pc('beta',d.beta)}">β ${fmt(d.beta)}</span> <span class="pill ${pc('div',d.div)}">Div ${fmt(d.div)}%</span> <span class="pill ${pc('roe',d.roe)}">ROE ${fmt(d.roe)}%</span></span>`;}).join('');
+    return`<div class="lb-row ${cls}">
+      <div class="lb-medal">${medal}</div>
+      <div class="lb-color" style="background:${s.color}"></div>
+      <div class="lb-info">
+        <div class="lb-name">${s.name}</div>
+        <div class="lb-tickers">${s.tickers.join(' · ')}</div>
+        <div class="lb-metrics">${pills}</div>
+      </div>
+      <div class="lb-right">
+        <div class="lb-val" style="color:${col}">$${s.val.toLocaleString()}</div>
+        <div class="lb-ret" style="color:${col}">${ret>=0?'+':''}${ret.toFixed(1)}%</div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function togglePlay(){
+  if(frame>=totalYears){resetSim();return;}
+  playing=!playing;
+  $('play-btn').textContent=playing?'Pause':'Play';
+  if(playing)tick();
+}
+
+function tick(){
+  if(!playing)return;
+  if(frame>=totalYears){playing=false;$('play-btn').textContent='Done';setTimeout(showEnd,600);return;}
+  frame++;
+  chart.data.labels=yLabels(totalYears).slice(0,frame+1);
+  chart.data.datasets.forEach((ds,i)=>{ds.data=sim.students[i].history.slice(0,frame+1);});
+  chart.update();
+  $('yr-num').textContent=frame;
+  renderStandings(frame);
+
+  // Live event banner
+  const ev=sim.yearEvents[frame-1];
+  const ticker=$('live-event-ticker');
+  if(ticker && ev && isSpecialEvent(ev)){
+    const good=ev.ret>=0;
+    const bg=good?'rgba(77,232,164,0.10)':'rgba(250,108,108,0.10)';
+    const br=good?'rgba(77,232,164,0.35)':'rgba(250,154,154,0.35)';
+    const tc=good?'#4de8a4':'#fa9a9a';
+    ticker.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;border:1px solid ${br};background:${bg};margin-bottom:12px;opacity:1;transition:opacity 0.5s`;
+    ticker.innerHTML=`<span style="font-size:22px;flex-shrink:0">${ev.icon}</span><div><div style="font-size:13px;font-weight:700;color:${tc}">${ev.label}</div><div style="font-size:11px;font-family:var(--mono);color:rgba(240,240,248,0.5)">Year ${frame} &nbsp;·&nbsp; Market return: ${ev.ret>=0?'+':''}${(ev.ret*100).toFixed(1)}%</div></div><div style="margin-left:auto;font-size:16px;font-weight:700;font-family:var(--mono);color:${tc};flex-shrink:0">${ev.ret>=0?'+':''}${(ev.ret*100).toFixed(1)}%</div>`;
+    clearTimeout(ticker._t);
+    ticker._t=setTimeout(()=>{ticker.style.opacity='0';setTimeout(()=>{ticker.style.display='none';},500);},3500);
+  } else if(ticker){
+    ticker.style.display='none';
+  }
+
+  timer=setTimeout(tick,parseInt($('sel-spd').value)||750);
+}
+
+function isSpecialEvent(ev){
+  const generic=['Market crash','Bear market','Mild decline','Flat year','Steady growth','Strong year','Bull run'];
+  return !generic.includes(ev.label);
+}
+
+function resetSim(){clearTimeout(timer);buildUI();}
+
+function showEnd(){
+  clearTimeout(timer);
+  const ranked=[...sim.students].map(s=>({...s,val:s.history[totalYears]})).sort((a,b)=>b.val-a.val);
+  const w=ranked[0];const ret=((w.val-START)/START*100);
+  $('win-name').textContent=`${w.name} wins!`;
+  $('win-value').innerHTML=`$${w.val.toLocaleString()} &nbsp;·&nbsp; <span style="color:#4de8a4">+${ret.toFixed(1)}%</span> return`;
+  $('win-picks').textContent=`Picks: ${w.tickers.join(', ')}`;
+
+  $('final-lb').innerHTML=`<div class="lb-list">${ranked.map((s,i)=>{
+    const r=((s.val-START)/START*100);const cls=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-size:13px;color:var(--muted)">#${i+1}</span>`;
+    const col=s.val>=START?'#4de8a4':'#fa9a9a';
+    return`<div class="lb-row ${cls}"><div class="lb-medal">${medal}</div><div class="lb-color" style="background:${s.color}"></div><div class="lb-info"><div class="lb-name">${s.name}</div><div class="lb-tickers">${s.tickers.join(' · ')}</div></div><div class="lb-right"><div class="lb-val" style="color:${col}">$${s.val.toLocaleString()}</div><div class="lb-ret" style="color:${col}">${r>=0?'+':''}${r.toFixed(1)}%</div></div></div>`;
+  }).join('')}</div>`;
+
+  renderLegend('end-legend');
+  new Chart($('endChart'),{
+    type:'line',
+    data:{labels:yLabels(totalYears),datasets:sim.students.map(s=>({label:s.name,data:s.history,borderColor:s.color,backgroundColor:'transparent',tension:0.4,pointRadius:2,borderWidth:2.5}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${c.parsed.y.toLocaleString()}`},backgroundColor:'rgba(18,18,26,0.95)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#f0f0f8',bodyColor:'rgba(240,240,248,0.7)',padding:10}},scales:{y:{ticks:{callback:v=>'$'+(v>=1e6?(v/1e6).toFixed(2)+'M':(v/1e3).toFixed(0)+'K'),color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}},x:{ticks:{color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{display:false},border:{display:false}}}}
+  });
+
+  const allTickers=[...new Set(sim.students.flatMap(s=>s.tickers))];
+  const rows=allTickers.map(sym=>{
+    const d=getStock(sym);
+    const est=d.estimated?'<span class="est-tag">est.</span>':'';
+    return`<tr>
+      <td class="ticker-cell">${sym}${est}</td>
+      <td class="company-cell">${d.name}</td>
+      <td style="font-family:var(--mono);font-size:12px">$${d.p}</td>
+      <td><span class="pill ${pc('pe',d.pe)}">${fmt(d.pe)}</span></td>
+      <td><span class="pill ${pc('ps',d.ps)}">${fmt(d.ps)}</span></td>
+      <td><span class="pill ${pc('beta',d.beta)}">${fmt(d.beta)}</span></td>
+      <td><span class="pill ${pc('div',d.div)}">${fmt(d.div)}%</span></td>
+      <td><span class="pill ${pc('roe',d.roe)}">${fmt(d.roe)}%</span></td>
+      <td style="font-size:11px;color:var(--muted)">${d.sec}</td>
+      <td><span style="font-size:10px;background:rgba(77,232,164,0.08);color:#4de8a4;border:1px solid rgba(77,232,164,0.2);border-radius:20px;padding:1px 7px">S&P 500</span></td>
+    </tr>`;
+  }).join('');
+  $('metrics-table').innerHTML=`<table><thead><tr>${['Ticker','Company','Price','P/E','P/S','Beta','Div Yield','ROE','Sector','Index'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+
+  renderStockBreakdown(ranked);
+  renderEventLog(ranked);
+  show('s-end');
+}
+
+function renderStockBreakdown(ranked){
+  const perStock=START/3;
+  const html=ranked.map(s=>{
+    const totalVal=s.history[totalYears];
+    const totalRet=((totalVal-START)/START*100);
+    const totalCol=totalRet>=0?'#4de8a4':'#fa9a9a';
+
+    // find best return among this student's holdings for bar scaling
+    const rets=s.holdings.map(h=>((h.price-h.startPrice)/h.startPrice*100));
+    const maxAbs=Math.max(...rets.map(Math.abs),1);
+
+    const stockRows=s.holdings.map(h=>{
+      const ret=((h.price-h.startPrice)/h.startPrice*100);
+      const col=ret>=0?'#4de8a4':'#fa9a9a';
+      const barW=Math.min(100,Math.abs(ret)/maxAbs*100);
+      const barCol=ret>=0?'rgba(77,232,164,0.5)':'rgba(250,154,154,0.5)';
+      const finalVal=h.shares*h.price;
+      return`<div class="stock-row">
+        <div class="stock-bar-wrap">
+          <div class="stock-sym">${h.sym}</div>
+          <div class="stock-name-small">${h.data.name}</div>
+          <div class="stock-bar-track">
+            <div class="stock-bar-fill" style="width:${barW}%;background:${barCol}"></div>
+          </div>
+        </div>
+        <div class="stock-right">
+          <div class="stock-ret" style="color:${col}">${ret>=0?'+':''}${ret.toFixed(1)}%</div>
+          <div class="stock-final-price">$${h.price.toFixed(2)}</div>
+          <div class="stock-value">≈$${Math.round(finalVal).toLocaleString()}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return`<div class="breakdown-card">
+      <div class="breakdown-header">
+        <div class="breakdown-avatar" style="background:${s.color}"></div>
+        <div class="breakdown-student-name">${s.name}</div>
+        <div class="breakdown-total">
+          <div class="breakdown-total-val" style="color:${totalCol}">$${totalVal.toLocaleString()}</div>
+          <div class="breakdown-total-ret" style="color:${totalCol}">${totalRet>=0?'+':''}${totalRet.toFixed(1)}% total</div>
+        </div>
+      </div>
+      ${stockRows}
+    </div>`;
+  }).join('');
+
+  $('stock-breakdown').innerHTML=`<div class="breakdown-grid">${html}</div>`;
+}
+
+function renderEventLog(ranked){
+  const events=sim.yearEvents;
+  const rows=events.map(ev=>{
+    const mktCol=ev.ret>=0?'#4de8a4':'#fa9a9a';
+    const mktStr=(ev.ret>=0?'+':'')+(ev.ret*100).toFixed(1)+'%';
+
+    const portChips=ranked.map(s=>{
+      const before=s.history[ev.year-1];
+      const after=s.history[ev.year];
+      const chg=((after-before)/before*100);
+      const cls=chg>=0?'up':'down';
+      return`<span class="ev-port ${cls}">${s.name.split(' ')[0]}: ${chg>=0?'+':''}${chg.toFixed(1)}%</span>`;
+    }).join('');
+
+    return`<div class="event-row ${ev.type}">
+      <div class="ev-year">Yr ${ev.year}</div>
+      <div class="ev-label ${ev.type}"><span style="margin-right:5px">${ev.icon}</span>${ev.label}</div>
+      <div class="ev-mkt" style="color:${mktCol}">${mktStr} market</div>
+      <div class="ev-portfolios">${portChips}</div>
+    </div>`;
+  }).join('');
+
+  $('event-log').innerHTML=`<div class="event-log">
+    <div class="log-header">
+      <span>Year</span><span>Event</span><span>Market return</span><span>Portfolio impact</span>
+    </div>
+    ${rows}
+  </div>`;
+}
+
+function replaySim(){clearTimeout(timer);buildUI();show('s-sim');playing=true;$('play-btn').textContent='Pause';tick();}
+function backToSetup(){clearTimeout(timer);sim=null;if(chart){chart.destroy();chart=null;}show('s-setup');}
+</script>
+</body>
+</html>
