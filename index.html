@@ -1305,33 +1305,43 @@ function buildSim(filled,mktKey,years){
   const mktRets=[];const yearEvents=[];
 
   for(let y=0;y<years;y++){
-    // Generate base S&P 500 return using historically-calibrated normal distribution
-    // Uses Box-Muller for proper normal distribution vs flat random
+    // S&P 500 annual returns follow roughly N(mu, sigma) with fat left tail
+    // Real historical stats: mu=10.3%, sigma=16.6%, ~18% bear years, ~5% crash years
+    // Crash years in history: 1931(-44%), 1937(-35%), 1974(-30%), 2002(-23%), 2008(-38%), 2022(-19%)
+    // Great years: 1954(+53%), 1933(+50%), 1995(+34%), 2013(+30%), 2019(+31%)
+
     let isCrash=Math.random()<mkt.crashP;
     let baseRet;
     if(isCrash){
-      // Crash: draw from negatively-skewed distribution
-      baseRet=-(mkt.crashMag*0.7 + Math.random()*mkt.crashMag*0.5);
+      // Crash year: uniform draw from [crashMag*0.5, crashMag*1.0] negative range
+      // e.g. mixed mode crashMag=0.30 → draws from [-15%, -30%]
+      baseRet = -(mkt.crashMag * (0.5 + Math.random()*0.5));
     } else {
-      // Normal year: mu + sigma * N(0,1), clamped to realistic bounds
+      // Normal year: mu + sigma * N(0,1)
+      // Clamp to historical extremes: worst non-crash year ~-20%, best ~+50%
       const z=boxMullerRandom();
-      baseRet=Math.max(-0.45, Math.min(0.55, mkt.mu + mkt.sigma * z));
+      baseRet=Math.max(-0.20, Math.min(0.50, mkt.mu + mkt.sigma * z));
     }
 
-    // 5% chance of a special real-world event firing on top of base return
+    // 5% chance of a special real-world event firing — these are MODIFIERS on top of base
+    // Kept modest because the base return already captures most of the year's move
+    // Events just add flavour and shift the outcome somewhat
     let eventMod=0, eventLabel=null, eventIcon='', eventType=null;
     if(Math.random()<0.05){
-      // Bias: in crash years lean bad, in strong years lean good, otherwise 50/50
       const goGood = baseRet>0.05 ? 0.65 : baseRet<-0.05 ? 0.25 : 0.50;
       const pool=Math.random()<goGood ? GOOD_EVENTS : BAD_EVENTS;
       const ev=pickEvent(pool);
-      eventMod=ev.mod;
+      // Scale the mod down: events shift the outcome but don't dominate it
+      // A "global financial crisis" event still only adds ~15% drag on top of existing crash
+      eventMod=ev.mod * 0.4;
       eventLabel=ev.label;
       eventIcon=ev.icon;
       eventType=ev.type;
     }
 
-    const ret=Math.max(-0.60, Math.min(0.65, baseRet+eventMod));
+    // Final market return: clamp to historical worst/best S&P 500 years
+    // 1931: -43.8% (worst), 1954: +52.6% (best)
+    const ret=Math.max(-0.44, Math.min(0.53, baseRet+eventMod));
     mktRets.push(ret);
 
     let label,type,icon;
@@ -1349,36 +1359,54 @@ function buildSim(filled,mktKey,years){
     yearEvents.push({year:y+1,ret,label,type,icon,isCrash});
   }
 
-  // ── STOCK RETURNS: benchmarked against S&P 500 market return each year ──
-  // Each stock's return = (beta × excess market return) + alpha components + noise
-  // This correctly ties individual stocks to the market index
+  // ── STOCK RETURNS: properly benchmarked to S&P 500 ──
+  // Real-world calibration:
+  //   S&P 500 avg annual return: ~10.3%, std dev: ~16.6%  (Damodaran 1928-2024)
+  //   Individual stock residual (idiosyncratic) vol after beta: ~15-20% annualised
+  //   But because we're modelling ANNUAL returns (not daily), and 3-stock portfolios
+  //   already diversify some risk, we keep idio noise modest: ~8-12% per stock per year
+  //   Alpha from fundamentals is tiny — even top fund managers average <1% alpha/year
+  //
+  // Formula: stockReturn = beta*(mktReturn - RF) + RF + tinyAlpha + idioNoise
+  //   where idioNoise ~ N(0, idioSigma) and idioSigma = 0.07 + 0.03*(beta-1) clamped [0.05,0.15]
+
   for(let y=0;y<years;y++){
     const mktR=mktRets[y];
-    // S&P 500 risk-free rate proxy: ~4% (long-run T-bill average)
-    const RF=0.04;
-    const excessMkt=mktR-RF; // excess return above risk-free
+    const RF=0.04; // long-run risk-free rate proxy
 
     for(const st of sts){
       let val=0;
       for(const h of st.holdings){
         const d=h.data;
-        const beta=d.beta||1.0;
+        // Clamp beta to realistic range — prevents extreme amplification
+        // Real S&P 500 stocks: beta typically 0.3 (utilities) to 2.0 (high-growth tech)
+        const beta=Math.max(0.2, Math.min(2.0, d.beta||1.0));
 
-        // CAPM-inspired: expected excess return = beta × excess market return
-        const capmReturn = RF + beta * excessMkt;
+        // CAPM core: beta drives how much the stock moves with the market
+        const mktExcess=mktR - RF;
+        const capmReturn=RF + beta * mktExcess;
 
-        // Alpha components from fundamentals (modest — can't beat market consistently)
-        const alphaVal  = valScore(d.pe, d.ps);       // valuation
-        const alphaQual = qualScore(d.roe, d.gm, d.de, null); // quality (eps removed from compact DB)
-        const alphaDiv  = (d.div||0)/100;             // dividend income
+        // Tiny alpha from fundamentals — capped at ±1.5% per year total
+        // Good fundamentals help a little; bad ones hurt a little. Not dramatic.
+        const alphaVal  = Math.max(-0.008, Math.min(0.008, valScore(d.pe, d.ps)*0.4));
+        const alphaQual = Math.max(-0.005, Math.min(0.005, qualScore(d.roe, d.gm, d.de, null)*0.4));
+        const alphaDiv  = (d.div||0)/100; // dividends are real guaranteed income
 
-        // Idiosyncratic noise: stock-specific volatility beyond market moves
-        // Scaled to each stock's sector volatility profile
-        const idioVol = inferVol(beta, d.sec) * 0.5;
-        const noise   = boxMullerRandom() * idioVol;
+        // Idiosyncratic noise: stock-specific moves UNCORRELATED with market
+        // Real annual residual vol for S&P 500 stocks is ~20-30%, but that includes
+        // earnings surprises, M&A, etc. We use a dampened version for educational clarity.
+        // Higher-beta stocks have slightly more idio risk too.
+        const idioSigma = Math.min(0.13, 0.06 + 0.025*(beta-1));
+        const noise=boxMullerRandom()*idioSigma;
 
-        const totalReturn = capmReturn + alphaVal + alphaQual + alphaDiv + noise;
-        h.price=Math.max(0.01, h.price*(1+totalReturn));
+        const totalReturn=capmReturn + alphaVal + alphaQual + alphaDiv + noise;
+
+        // Hard floor: a stock can lose at most 60% in a year (extreme crash)
+        // Hard ceiling: a stock can gain at most 120% in a year (exceptional)
+        // These are generous but prevent completely unrealistic numbers
+        const clampedReturn=Math.max(-0.60, Math.min(1.20, totalReturn));
+
+        h.price=Math.max(0.01, h.price*(1+clampedReturn));
         h.priceHistory.push(Math.round(h.price*100)/100);
         val+=h.shares*h.price;
       }
