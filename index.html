@@ -1175,16 +1175,18 @@ const EXTRA_DB={
 const DB={...SP500_DB, ...EXTRA_DB};
 
 const COLORS=['#7c6cfa','#4de8a4','#fa8c6c','#60b4fa','#f4c842','#e86cca','#6cfac0','#fa6c6c','#c0fa6c','#6cb4e8','#e8a46c','#a46cfa','#4dfae8','#fa4d6c','#c8fa4d'];
-// S&P 500-benchmarked market profiles
-// Historical data: avg ~10.3% annual total return (with dividends reinvested), std dev ~16.6%
-// Bear markets historically occur ~18-20% of years since 1928 (NYU Stern / Damodaran data)
-// Crash years historically: 1931 (-43.8%), 2008 (-38.5%), 1937 (-35.3%), 1974 (-29.7%), 2002 (-23.4%)
-// Great years:  1954 (+52.6%), 1933 (+50%), 1935 (+46.7%), 1928 (+43.8%), 1958 (+43.7%)
+// S&P 500 market profiles — calibrated to real historical data (Damodaran 1928-2024)
+// mu = mean annual return, sigma = std deviation
+// All drawn from N(mu, sigma), clamped to historical S&P 500 extremes [-44%, +53%]
 const MKT={
-  bull:     {mu:0.135, sigma:0.13,  crashP:0.06, crashMag:0.22},
-  mixed:    {mu:0.103, sigma:0.166, crashP:0.18, crashMag:0.30},
-  bear:     {mu:0.020, sigma:0.20,  crashP:0.28, crashMag:0.35},
-  volatile: {mu:0.070, sigma:0.24,  crashP:0.22, crashMag:0.38},
+  // Bull: like 1990s or 2010s expansion — above-average drift, low vol
+  bull:     {mu:0.135, sigma:0.120},
+  // Mixed: closest to full 100-year historical average — 10.3% avg, 16.6% std dev
+  mixed:    {mu:0.103, sigma:0.166},
+  // Bear: like 1970s stagflation era — below-average drift, higher vol
+  bear:     {mu:0.040, sigma:0.200},
+  // Volatile: like 2000s — average drift but very wide swings
+  volatile: {mu:0.080, sigma:0.240},
 };
 const START=1000000;
 
@@ -1250,163 +1252,143 @@ function buildSim(filled,mktKey,years){
     return{name:s.name.trim(),tickers,holdings,history:[START],color:COLORS[i%COLORS.length]};
   });
 
-  // ── REAL-WORLD EVENTS (5% chance per year, historically informed) ──
-  // Each event has: probability within pool, market return modifier, label, type, icon
-  // Modifiers are calibrated to real historical S&P 500 crash/boom magnitudes
+  // ── REAL-WORLD EVENTS: 5% chance per year, contextual labels only ──
+  // These describe what happened — the return is still driven by the base model
   const BAD_EVENTS=[
-    // Severe crashes (~10-20% probability in the rare-event pool)
-    {p:0.08, mod:-0.38, label:'Global financial crisis',          type:'crash', icon:'🏦'},  // 2008: -38.5%
-    {p:0.06, mod:-0.35, label:'Dot-com bubble bursts',            type:'crash', icon:'💻'},  // 2000-02 style
-    {p:0.06, mod:-0.30, label:'Global pandemic shuts economy',    type:'crash', icon:'🦠'},  // COVID-style
-    {p:0.07, mod:-0.28, label:'Major sovereign debt crisis',       type:'crash', icon:'🏛️'},  // Europe 2010-style
-    {p:0.07, mod:-0.25, label:'Hyperinflation & rate shock',       type:'crash', icon:'📈'},  // 1974: -29.7%
-    // Moderate bear events
-    {p:0.09, mod:-0.20, label:'Major geopolitical war breaks out', type:'bear',  icon:'⚔️'},
-    {p:0.09, mod:-0.18, label:'Oil price shock hits consumers',    type:'bear',  icon:'🛢️'},  // 1973 OPEC style
-    {p:0.10, mod:-0.15, label:'Fed hikes rates aggressively',      type:'bear',  icon:'🏛️'},  // 2022: -19.4%
-    {p:0.10, mod:-0.13, label:'Trade war tariffs escalate',        type:'bear',  icon:'🚢'},
-    {p:0.10, mod:-0.10, label:'Housing market collapses',          type:'bear',  icon:'🏠'},
-    {p:0.10, mod:-0.08, label:'Corporate earnings disappoint',     type:'bear',  icon:'📊'},
-    // Mild negative
-    {p:0.08, mod:-0.05, label:'Political uncertainty spooks markets', type:'flat', icon:'🗳️'},
+    {label:'Global financial crisis',       type:'crash', icon:'🏦'},
+    {label:'Dot-com bubble bursts',          type:'crash', icon:'💻'},
+    {label:'Global pandemic hits markets',   type:'crash', icon:'🦠'},
+    {label:'Hyperinflation & rate shock',    type:'crash', icon:'📈'},
+    {label:'Geopolitical war breaks out',    type:'bear',  icon:'⚔️'},
+    {label:'Oil price shock',                type:'bear',  icon:'🛢️'},
+    {label:'Fed hikes rates aggressively',   type:'bear',  icon:'🏛️'},
+    {label:'Trade war escalates',            type:'bear',  icon:'🚢'},
+    {label:'Housing market cools',           type:'bear',  icon:'🏠'},
+    {label:'Corporate earnings disappoint',  type:'bear',  icon:'📊'},
   ];
-
   const GOOD_EVENTS=[
-    // Exceptional boom years (calibrated to real best years)
-    {p:0.06, mod:+0.38, label:'Post-war economic boom',            type:'bull',  icon:'🏭'},  // 1954: +52.6%
-    {p:0.07, mod:+0.32, label:'Tech revolution takes hold',        type:'bull',  icon:'💡'},  // 1999: +21%, 2023: +26%
-    {p:0.07, mod:+0.28, label:'AI breakthrough transforms industry',type:'bull',  icon:'🤖'},
-    {p:0.08, mod:+0.24, label:'Historic peace deal & global trade', type:'bull',  icon:'🕊️'},
-    {p:0.08, mod:+0.20, label:'Fed slashes rates — stimulus surge', type:'bull',  icon:'✂️'},  // 2009: +25.9%
-    {p:0.09, mod:+0.18, label:'Record corporate earnings season',   type:'bull',  icon:'💰'},
-    // Moderate positive
-    {p:0.10, mod:+0.14, label:'Strong GDP growth beats forecasts',  type:'bull',  icon:'📈'},
-    {p:0.10, mod:+0.12, label:'Clean energy investment boom',       type:'growth',icon:'⚡'},
-    {p:0.10, mod:+0.09, label:'Consumer spending surges',          type:'growth',icon:'🛍️'},
-    {p:0.10, mod:+0.07, label:'Inflation cools, soft landing achieved', type:'growth',icon:'🌤️'},
-    {p:0.08, mod:+0.05, label:'Semiconductor supply fully recovered', type:'growth',icon:'💾'},
-    {p:0.07, mod:+0.03, label:'New government stimulus package',    type:'flat',  icon:'💵'},
+    {label:'AI revolution boosts markets',   type:'bull',  icon:'🤖'},
+    {label:'Fed cuts rates sharply',         type:'bull',  icon:'✂️'},
+    {label:'Record corporate earnings',      type:'bull',  icon:'💰'},
+    {label:'Major peace deal & trade boom',  type:'bull',  icon:'🕊️'},
+    {label:'Tech breakthrough takes hold',   type:'bull',  icon:'💡'},
+    {label:'Strong GDP growth beats forecasts',type:'bull', icon:'📈'},
+    {label:'Inflation cools — soft landing', type:'growth',icon:'🌤️'},
+    {label:'Consumer spending surges',       type:'growth',icon:'🛍️'},
+    {label:'New government stimulus',        type:'growth',icon:'💵'},
   ];
 
-  function boxMullerRandom(){
-    // Normally distributed random number using Box-Muller transform
+  function boxMuller(){
     let u=0,v=0;
     while(u===0)u=Math.random();
     while(v===0)v=Math.random();
     return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
   }
 
-  function pickEvent(pool){
-    const r=Math.random();let cum=0;
-    for(const e of pool){cum+=e.p;if(r<cum)return e;}
-    return pool[pool.length-1];
-  }
+  // ── GENERATE MARKET RETURNS ──
+  // Based on real S&P 500 history (Damodaran 1928-2024):
+  //   Average annual total return: +10.3%
+  //   Standard deviation: ~16.6%
+  //   Down years: ~27% of years historically
+  //   Crash years (>-20%): ~7% of years (about once every 14 years)
+  //   The market ALWAYS recovers — no permanent crashes for the index
 
   const mktRets=[];const yearEvents=[];
 
   for(let y=0;y<years;y++){
-    // S&P 500 annual returns follow roughly N(mu, sigma) with fat left tail
-    // Real historical stats: mu=10.3%, sigma=16.6%, ~18% bear years, ~5% crash years
-    // Crash years in history: 1931(-44%), 1937(-35%), 1974(-30%), 2002(-23%), 2008(-38%), 2022(-19%)
-    // Great years: 1954(+53%), 1933(+50%), 1995(+34%), 2013(+30%), 2019(+31%)
+    const z=boxMuller();
+    // Draw from calibrated normal distribution matching S&P 500 history
+    let ret=mkt.mu + mkt.sigma * z;
 
-    let isCrash=Math.random()<mkt.crashP;
-    let baseRet;
-    if(isCrash){
-      // Crash year: uniform draw from [crashMag*0.5, crashMag*1.0] negative range
-      // e.g. mixed mode crashMag=0.30 → draws from [-15%, -30%]
-      baseRet = -(mkt.crashMag * (0.5 + Math.random()*0.5));
-    } else {
-      // Normal year: mu + sigma * N(0,1)
-      // Clamp to historical extremes: worst non-crash year ~-20%, best ~+50%
-      const z=boxMullerRandom();
-      baseRet=Math.max(-0.20, Math.min(0.50, mkt.mu + mkt.sigma * z));
-    }
+    // Clamp to historically observed S&P 500 annual return range
+    // Worst ever: 1931 = -43.8%  |  Best ever: 1954 = +52.6%
+    ret=Math.max(-0.44, Math.min(0.53, ret));
 
-    // 5% chance of a special real-world event firing — these are MODIFIERS on top of base
-    // Kept modest because the base return already captures most of the year's move
-    // Events just add flavour and shift the outcome somewhat
-    let eventMod=0, eventLabel=null, eventIcon='', eventType=null;
-    if(Math.random()<0.05){
-      const goGood = baseRet>0.05 ? 0.65 : baseRet<-0.05 ? 0.25 : 0.50;
-      const pool=Math.random()<goGood ? GOOD_EVENTS : BAD_EVENTS;
-      const ev=pickEvent(pool);
-      // Scale the mod down: events shift the outcome but don't dominate it
-      // A "global financial crisis" event still only adds ~15% drag on top of existing crash
-      eventMod=ev.mod * 0.4;
-      eventLabel=ev.label;
-      eventIcon=ev.icon;
-      eventType=ev.type;
-    }
-
-    // Final market return: clamp to historical worst/best S&P 500 years
-    // 1931: -43.8% (worst), 1954: +52.6% (best)
-    const ret=Math.max(-0.44, Math.min(0.53, baseRet+eventMod));
     mktRets.push(ret);
 
-    let label,type,icon;
-    if(eventLabel){
-      label=eventLabel; type=eventType; icon=eventIcon;
+    // Label the year
+    let label,type,icon,evLabel=null;
+
+    // 5% chance of a named real-world event (purely cosmetic — adds context)
+    if(Math.random()<0.05){
+      const pool=ret<-0.05?BAD_EVENTS:ret>0.10?GOOD_EVENTS:(Math.random()<0.5?BAD_EVENTS:GOOD_EVENTS);
+      const ev=pool[Math.floor(Math.random()*pool.length)];
+      evLabel=ev.label; type=ev.type; icon=ev.icon;
+      label=evLabel;
     } else {
       if(ret<-0.20){label='Market crash';       type='crash';  icon='💥';}
       else if(ret<-0.10){label='Bear market';   type='bear';   icon='🐻';}
-      else if(ret<-0.03){label='Mild decline';  type='bear';   icon='📉';}
+      else if(ret<-0.03){label='Down year';     type='bear';   icon='📉';}
       else if(ret<0.05) {label='Flat year';     type='flat';   icon='➡️';}
-      else if(ret<0.12) {label='Steady growth'; type='growth'; icon='🌱';}
-      else if(ret<0.22) {label='Strong year';   type='bull';   icon='🐂';}
+      else if(ret<0.15) {label='Steady growth'; type='growth'; icon='🌱';}
+      else if(ret<0.25) {label='Strong year';   type='bull';   icon='🐂';}
       else              {label='Bull run';       type='bull';   icon='🚀';}
     }
-    yearEvents.push({year:y+1,ret,label,type,icon,isCrash});
+    yearEvents.push({year:y+1,ret,label,type,icon,isEvent:!!evLabel});
   }
 
-  // ── STOCK RETURNS: properly benchmarked to S&P 500 ──
-  // Real-world calibration:
-  //   S&P 500 avg annual return: ~10.3%, std dev: ~16.6%  (Damodaran 1928-2024)
-  //   Individual stock residual (idiosyncratic) vol after beta: ~15-20% annualised
-  //   But because we're modelling ANNUAL returns (not daily), and 3-stock portfolios
-  //   already diversify some risk, we keep idio noise modest: ~8-12% per stock per year
-  //   Alpha from fundamentals is tiny — even top fund managers average <1% alpha/year
+  // ── STOCK RETURNS: CAPM-based, benchmarked to the S&P 500 ──
   //
-  // Formula: stockReturn = beta*(mktReturn - RF) + RF + tinyAlpha + idioNoise
-  //   where idioNoise ~ N(0, idioSigma) and idioSigma = 0.07 + 0.03*(beta-1) clamped [0.05,0.15]
+  // Real-world model:
+  //   stockReturn = RF + beta*(mktReturn − RF) + smallAlpha + idioNoise
+  //
+  // Key calibration facts:
+  //   - A beta=1.0 stock tracks the S&P 500 almost exactly
+  //   - A beta=0.5 stock (e.g. KO, JNJ) moves ~half as much as the market
+  //   - A beta=1.5 stock (e.g. NVDA) moves ~1.5× the market
+  //   - Idiosyncratic noise for S&P 500 stocks: ~10-15% residual annual vol
+  //     BUT we halve this for clarity — students should see the market story, not pure noise
+  //   - Alpha is tiny: <1% per year even for great companies
+  //   - Stocks CAN have a bad year but NEVER go to zero — floor is -40% single year
+  //   - Long-run drift is positive: the economy grows, earnings grow, prices follow
+
+  const RF=0.03; // long-run risk-free rate (~3yr T-bill average)
 
   for(let y=0;y<years;y++){
     const mktR=mktRets[y];
-    const RF=0.04; // long-run risk-free rate proxy
+    const mktExcess=mktR-RF;
 
     for(const st of sts){
       let val=0;
       for(const h of st.holdings){
         const d=h.data;
-        // Clamp beta to realistic range — prevents extreme amplification
-        // Real S&P 500 stocks: beta typically 0.3 (utilities) to 2.0 (high-growth tech)
-        const beta=Math.max(0.2, Math.min(2.0, d.beta||1.0));
 
-        // CAPM core: beta drives how much the stock moves with the market
-        const mktExcess=mktR - RF;
-        const capmReturn=RF + beta * mktExcess;
+        // Beta: clamp to [0.2, 1.8] — even NVDA rarely exceeds 1.8 on a 5yr basis
+        const beta=Math.max(0.2, Math.min(1.8, d.beta||1.0));
 
-        // Tiny alpha from fundamentals — capped at ±1.5% per year total
-        // Good fundamentals help a little; bad ones hurt a little. Not dramatic.
-        const alphaVal  = Math.max(-0.008, Math.min(0.008, valScore(d.pe, d.ps)*0.4));
-        const alphaQual = Math.max(-0.005, Math.min(0.005, qualScore(d.roe, d.gm, d.de, null)*0.4));
-        const alphaDiv  = (d.div||0)/100; // dividends are real guaranteed income
+        // Core CAPM return
+        const capmReturn=RF + beta*mktExcess;
 
-        // Idiosyncratic noise: stock-specific moves UNCORRELATED with market
-        // Real annual residual vol for S&P 500 stocks is ~20-30%, but that includes
-        // earnings surprises, M&A, etc. We use a dampened version for educational clarity.
-        // Higher-beta stocks have slightly more idio risk too.
-        const idioSigma = Math.min(0.13, 0.06 + 0.025*(beta-1));
-        const noise=boxMullerRandom()*idioSigma;
+        // Small alpha from fundamentals — max ±1% total
+        // Good value stocks get a slight tailwind; highly overvalued get slight headwind
+        const alpha=Math.max(-0.010, Math.min(0.010,
+          valScore(d.pe,d.ps)*0.35 +
+          qualScore(d.roe,d.gm,d.de,null)*0.35 +
+          (d.div||0)/100  // dividends are real income
+        ));
 
-        const totalReturn=capmReturn + alphaVal + alphaQual + alphaDiv + noise;
+        // Idiosyncratic noise: stock-specific moves beyond market correlation
+        // Sigma: 5% for low-beta defensives, up to 9% for high-beta growth
+        // This is deliberately modest — we want students to see market trends, not just randomness
+        const idioSigma=0.05 + 0.025*(beta-0.2);
+        const noise=boxMuller()*idioSigma;
 
-        // Hard floor: a stock can lose at most 60% in a year (extreme crash)
-        // Hard ceiling: a stock can gain at most 120% in a year (exceptional)
-        // These are generous but prevent completely unrealistic numbers
-        const clampedReturn=Math.max(-0.60, Math.min(1.20, totalReturn));
+        // Total annual return for this stock
+        let stockReturn=capmReturn + alpha + noise;
 
-        h.price=Math.max(0.01, h.price*(1+clampedReturn));
+        // ── REALISTIC BOUNDS ──
+        // S&P 500 constituent stocks:
+        //   - Worst single year for a large-cap: rarely below -50% (GFC exceptions)
+        //   - Best single year: rarely above +100% for large caps
+        //   - BUT: we set a tighter educational floor — no stock drops more than 35% in one year
+        //     (this prevents discouraging extreme losses while still showing real-ish downturns)
+        //   - And no stock goes above +60% in one year (realistic for large-caps)
+        stockReturn=Math.max(-0.35, Math.min(0.60, stockReturn));
+
+        // Price cannot go below 20% of starting price over the whole simulation
+        // This reflects that S&P 500 companies don't go bankrupt/to zero
+        const minPrice=h.startPrice*0.20;
+        h.price=Math.max(minPrice, h.price*(1+stockReturn));
         h.priceHistory.push(Math.round(h.price*100)/100);
         val+=h.shares*h.price;
       }
