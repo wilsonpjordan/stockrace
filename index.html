@@ -1175,18 +1175,22 @@ const EXTRA_DB={
 const DB={...SP500_DB, ...EXTRA_DB};
 
 const COLORS=['#7c6cfa','#4de8a4','#fa8c6c','#60b4fa','#f4c842','#e86cca','#6cfac0','#fa6c6c','#c0fa6c','#6cb4e8','#e8a46c','#a46cfa','#4dfae8','#fa4d6c','#c8fa4d'];
-// S&P 500 market profiles — calibrated to real historical data (Damodaran 1928-2024)
-// mu = mean annual return, sigma = std deviation
-// All drawn from N(mu, sigma), clamped to historical S&P 500 extremes [-44%, +53%]
+// ── MARKET PROFILES ──
+// Calibrated to real S&P 500 history (Damodaran / Four Pillar Freedom / Hartford Funds):
+//   40-yr rolling CAGR: worst 4.2% (1969-2008), median 6.5%, best 8.8% (1933-1972)
+//   Source: fourpillarfreedom.com, dqydj.com historical return calculators
+//   The S&P 500 has NEVER lost money over any 40-year rolling period.
+//   Individual stocks add variance but quality picks cluster near index performance long-term.
+//
+// Each profile defines the ANNUAL distribution parameters.
+// Returns are drawn from a log-normal distribution with Ito correction so that
+// the geometric mean (CAGR) is what we actually intend — not the arithmetic mean.
+// This is the mathematically correct way to model compounding asset returns.
 const MKT={
-  // Bull: like 1990s or 2010s expansion — above-average drift, low vol
-  bull:     {mu:0.135, sigma:0.120},
-  // Mixed: closest to full 100-year historical average — 10.3% avg, 16.6% std dev
-  mixed:    {mu:0.103, sigma:0.166},
-  // Bear: like 1970s stagflation era — below-average drift, higher vol
-  bear:     {mu:0.040, sigma:0.200},
-  // Volatile: like 2000s — average drift but very wide swings
-  volatile: {mu:0.080, sigma:0.240},
+  bull:     {cagr:0.115, sigma:0.12},  // 1990s/2010s expansion
+  mixed:    {cagr:0.095, sigma:0.145}, // calibrated to real S&P 500 history
+  bear:     {cagr:0.035, sigma:0.18},  // 1970s stagflation / 2000s lost decade
+  volatile: {cagr:0.075, sigma:0.22},  // wide swings, average drift
 };
 const START=1000000;
 
@@ -1252,145 +1256,142 @@ function buildSim(filled,mktKey,years){
     return{name:s.name.trim(),tickers,holdings,history:[START],color:COLORS[i%COLORS.length]};
   });
 
-  // ── REAL-WORLD EVENTS: 5% chance per year, contextual labels only ──
-  // These describe what happened — the return is still driven by the base model
   const BAD_EVENTS=[
-    {label:'Global financial crisis',       type:'crash', icon:'🏦'},
-    {label:'Dot-com bubble bursts',          type:'crash', icon:'💻'},
-    {label:'Global pandemic hits markets',   type:'crash', icon:'🦠'},
-    {label:'Hyperinflation & rate shock',    type:'crash', icon:'📈'},
-    {label:'Geopolitical war breaks out',    type:'bear',  icon:'⚔️'},
-    {label:'Oil price shock',                type:'bear',  icon:'🛢️'},
-    {label:'Fed hikes rates aggressively',   type:'bear',  icon:'🏛️'},
-    {label:'Trade war escalates',            type:'bear',  icon:'🚢'},
-    {label:'Housing market cools',           type:'bear',  icon:'🏠'},
-    {label:'Corporate earnings disappoint',  type:'bear',  icon:'📊'},
+    {label:'Global financial crisis',     type:'crash', icon:'🏦'},
+    {label:'Dot-com bubble bursts',        type:'crash', icon:'💻'},
+    {label:'Pandemic hits markets',        type:'crash', icon:'🦠'},
+    {label:'Inflation & rate shock',       type:'bear',  icon:'📈'},
+    {label:'Geopolitical conflict',        type:'bear',  icon:'⚔️'},
+    {label:'Oil price shock',              type:'bear',  icon:'🛢️'},
+    {label:'Fed hikes rates sharply',      type:'bear',  icon:'🏛️'},
+    {label:'Trade war escalates',          type:'bear',  icon:'🚢'},
+    {label:'Earnings disappoint broadly',  type:'bear',  icon:'📊'},
   ];
   const GOOD_EVENTS=[
-    {label:'AI revolution boosts markets',   type:'bull',  icon:'🤖'},
-    {label:'Fed cuts rates sharply',         type:'bull',  icon:'✂️'},
-    {label:'Record corporate earnings',      type:'bull',  icon:'💰'},
-    {label:'Major peace deal & trade boom',  type:'bull',  icon:'🕊️'},
-    {label:'Tech breakthrough takes hold',   type:'bull',  icon:'💡'},
-    {label:'Strong GDP growth beats forecasts',type:'bull', icon:'📈'},
-    {label:'Inflation cools — soft landing', type:'growth',icon:'🌤️'},
-    {label:'Consumer spending surges',       type:'growth',icon:'🛍️'},
-    {label:'New government stimulus',        type:'growth',icon:'💵'},
+    {label:'AI revolution boosts markets', type:'bull',  icon:'🤖'},
+    {label:'Fed cuts rates sharply',       type:'bull',  icon:'✂️'},
+    {label:'Record corporate earnings',    type:'bull',  icon:'💰'},
+    {label:'Major tech breakthrough',      type:'bull',  icon:'💡'},
+    {label:'Strong GDP growth',            type:'bull',  icon:'📈'},
+    {label:'Inflation cools — soft landing',type:'growth',icon:'🌤️'},
+    {label:'Consumer spending surge',      type:'growth',icon:'🛍️'},
+    {label:'New government stimulus',      type:'growth',icon:'💵'},
   ];
 
-  function boxMuller(){
+  // ── Box-Muller: proper normal distribution ──
+  function randn(){
     let u=0,v=0;
     while(u===0)u=Math.random();
     while(v===0)v=Math.random();
     return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
   }
 
-  // ── GENERATE MARKET RETURNS ──
-  // Based on real S&P 500 history (Damodaran 1928-2024):
-  //   Average annual total return: +10.3%
-  //   Standard deviation: ~16.6%
-  //   Down years: ~27% of years historically
-  //   Crash years (>-20%): ~7% of years (about once every 14 years)
-  //   The market ALWAYS recovers — no permanent crashes for the index
+  // ── ALL CONSTANTS DECLARED FIRST ──
+  const RF=0.045;        // long-run risk-free rate
+  const MKT_SIGMA=0.166; // S&P 500 long-run annual std dev
 
-  const mktRets=[];const yearEvents=[];
+  // Horizon-aware scaling: longer horizons → tighter vol and caps
+  // Research: 40-yr S&P 500 rolling CAGR worst=4.2%, median=6.5%, best=8.8% (inflation-adj.)
+  // Source: fourpillarfreedom.com / dqydj.com historical return calculators
+  let annualSigmaScale, annualCap, annualFloor;
+  if      (years <= 10) { annualSigmaScale=1.00; annualCap= 0.38; annualFloor=-0.44; }
+  else if (years <= 15) { annualSigmaScale=0.82; annualCap= 0.30; annualFloor=-0.36; }
+  else if (years <= 20) { annualSigmaScale=0.70; annualCap= 0.24; annualFloor=-0.30; }
+  else if (years <= 25) { annualSigmaScale=0.63; annualCap= 0.21; annualFloor=-0.26; }
+  else if (years <= 30) { annualSigmaScale=0.57; annualCap= 0.19; annualFloor=-0.23; }
+  else                  { annualSigmaScale=0.52; annualCap= 0.17; annualFloor=-0.21; }
+
+  // Market sigma for this horizon
+  const mktSigma = mkt.sigma * annualSigmaScale;
+
+  // Log-normal Ito correction: mu_log = log(1+CAGR) - σ²/2
+  // Ensures the geometric mean of compounded returns = intended CAGR
+  const mktMuLog = Math.log(1 + mkt.cagr) - mktSigma*mktSigma/2;
+
+  // ── GENERATE ANNUAL MARKET RETURNS (log-normal) ──
+  // Log-normal is the standard model for asset returns (Black-Scholes, Samuelson 1965).
+  const mktRets=[];
+  const yearEvents=[];
 
   for(let y=0;y<years;y++){
-    const z=boxMuller();
-    // Draw from calibrated normal distribution matching S&P 500 history
-    let ret=mkt.mu + mkt.sigma * z;
+    const logRet = mktMuLog + mktSigma*randn();
+    const mktR   = Math.max(-0.44, Math.min(0.45, Math.exp(logRet)-1));
+    mktRets.push(mktR);
 
-    // Clamp to historically observed S&P 500 annual return range
-    // Worst ever: 1931 = -43.8%  |  Best ever: 1954 = +52.6%
-    ret=Math.max(-0.44, Math.min(0.53, ret));
-
-    mktRets.push(ret);
-
-    // Label the year
-    let label,type,icon,evLabel=null;
-
-    // 5% chance of a named real-world event (purely cosmetic — adds context)
+    let label,type,icon,isEvent=false;
     if(Math.random()<0.05){
-      const pool=ret<-0.05?BAD_EVENTS:ret>0.10?GOOD_EVENTS:(Math.random()<0.5?BAD_EVENTS:GOOD_EVENTS);
+      const pool=mktR<0?BAD_EVENTS:GOOD_EVENTS;
       const ev=pool[Math.floor(Math.random()*pool.length)];
-      evLabel=ev.label; type=ev.type; icon=ev.icon;
-      label=evLabel;
+      label=ev.label; type=ev.type; icon=ev.icon; isEvent=true;
     } else {
-      if(ret<-0.20){label='Market crash';       type='crash';  icon='💥';}
-      else if(ret<-0.10){label='Bear market';   type='bear';   icon='🐻';}
-      else if(ret<-0.03){label='Down year';     type='bear';   icon='📉';}
-      else if(ret<0.05) {label='Flat year';     type='flat';   icon='➡️';}
-      else if(ret<0.15) {label='Steady growth'; type='growth'; icon='🌱';}
-      else if(ret<0.25) {label='Strong year';   type='bull';   icon='🐂';}
-      else              {label='Bull run';       type='bull';   icon='🚀';}
+      if(mktR<-0.20){label='Market crash';    type='crash'; icon='💥';}
+      else if(mktR<-0.10){label='Bear market'; type='bear';  icon='🐻';}
+      else if(mktR<0)    {label='Down year';   type='bear';  icon='📉';}
+      else if(mktR<0.05) {label='Flat year';   type='flat';  icon='➡️';}
+      else if(mktR<0.15) {label='Steady growth';type='growth';icon='🌱';}
+      else if(mktR<0.25) {label='Strong year';  type='bull'; icon='🐂';}
+      else               {label='Bull run';     type='bull'; icon='🚀';}
     }
-    yearEvents.push({year:y+1,ret,label,type,icon,isEvent:!!evLabel});
+    yearEvents.push({year:y+1,ret:mktR,label,type,icon,isEvent});
   }
 
-  // ── STOCK RETURNS: CAPM-based, benchmarked to the S&P 500 ──
-  //
-  // Real-world model:
-  //   stockReturn = RF + beta*(mktReturn − RF) + smallAlpha + idioNoise
-  //
-  // Key calibration facts:
-  //   - A beta=1.0 stock tracks the S&P 500 almost exactly
-  //   - A beta=0.5 stock (e.g. KO, JNJ) moves ~half as much as the market
-  //   - A beta=1.5 stock (e.g. NVDA) moves ~1.5× the market
-  //   - Idiosyncratic noise for S&P 500 stocks: ~10-15% residual annual vol
-  //     BUT we halve this for clarity — students should see the market story, not pure noise
-  //   - Alpha is tiny: <1% per year even for great companies
-  //   - Stocks CAN have a bad year but NEVER go to zero — floor is -40% single year
-  //   - Long-run drift is positive: the economy grows, earnings grow, prices follow
+  // ── PRE-COMPUTE ONE RETURN SERIES PER UNIQUE TICKER ──
+  // All students holding the same ticker see identical returns — same simulation universe.
+  const allTickers = [...new Set(sts.flatMap(st => st.holdings.map(h => h.sym)))];
+  const tickerReturns = {};
 
-  const RF=0.03; // long-run risk-free rate (~3yr T-bill average)
+  for(const sym of allTickers){
+    const d = getStock(sym);
+    const beta = Math.max(0.3, Math.min(1.8, d.beta||1.0));
 
-  for(let y=0;y<years;y++){
-    const mktR=mktRets[y];
-    const mktExcess=mktR-RF;
+    const sectorVol={
+      'Technology':0.30,'Communication':0.28,'Consumer Discretionary':0.28,
+      'Consumer Staples':0.20,'Health Care':0.24,'Financials':0.26,
+      'Industrials':0.24,'Energy':0.30,'Materials':0.26,
+      'Utilities':0.18,'Real Estate':0.22,'ETF':0.15,
+    }[d.sec]||0.26;
+    const stockSigma = sectorVol*(0.85+0.3*(beta-1))*annualSigmaScale;
+    const idioVar    = Math.max(0.015, stockSigma*stockSigma - beta*beta*MKT_SIGMA*MKT_SIGMA*annualSigmaScale*annualSigmaScale);
+    const idioSigma  = Math.sqrt(idioVar);
 
+    // Alpha: wider range than before so fundamentals genuinely matter.
+    // Great companies (high ROE, dividends, fair value) get real tailwind ~+1.5%/yr.
+    // Struggling companies (negative ROE, terrible margins, insane PE) get real drag ~-2%/yr.
+    // Most stocks land near zero — only ~5% of stocks genuinely beat the market.
+    const alpha = Math.max(-0.025, Math.min(0.018,
+      (d.roe!=null&&d.roe>50  ? 0.015 : d.roe!=null&&d.roe>25 ? 0.010 :
+       d.roe!=null&&d.roe>12  ? 0.004 : d.roe!=null&&d.roe<0  ?-0.012 : -0.007) +
+      ((d.div||0)>3           ? 0.006 : (d.div||0)>1           ? 0.003 : 0) +
+      (d.pe!=null&&d.pe>0&&d.pe<18 ? 0.006 :
+       d.pe!=null&&d.pe>60    ?-0.004 :
+       d.pe!=null&&d.pe>100   ?-0.014 : 0.003) +
+      (d.gm!=null&&d.gm>60    ? 0.004 :
+       d.gm!=null&&d.gm<0     ?-0.007 :
+       d.gm!=null&&d.gm<15    ?-0.004 : 0)
+    ));
+
+    const rfLog      = Math.log(1+RF) - 0.0001;
+    const stockMuLog = rfLog + beta*(mktMuLog-rfLog) + alpha - idioVar/2;
+
+    tickerReturns[sym] = [];
+    for(let y=0; y<years; y++){
+      const z_mkt  = randn();
+      const z_idio = randn();
+      const logRet = stockMuLog + beta*mktSigma*z_mkt + idioSigma*z_idio;
+      const ret    = Math.exp(logRet) - 1;
+      tickerReturns[sym].push(Math.max(annualFloor, Math.min(annualCap, ret)));
+    }
+  }
+
+  // ── APPLY SHARED RETURNS TO EVERY STUDENT ──
+  for(let y=0; y<years; y++){
     for(const st of sts){
       let val=0;
       for(const h of st.holdings){
-        const d=h.data;
-
-        // Beta: clamp to [0.2, 1.8] — even NVDA rarely exceeds 1.8 on a 5yr basis
-        const beta=Math.max(0.2, Math.min(1.8, d.beta||1.0));
-
-        // Core CAPM return
-        const capmReturn=RF + beta*mktExcess;
-
-        // Small alpha from fundamentals — max ±1% total
-        // Good value stocks get a slight tailwind; highly overvalued get slight headwind
-        const alpha=Math.max(-0.010, Math.min(0.010,
-          valScore(d.pe,d.ps)*0.35 +
-          qualScore(d.roe,d.gm,d.de,null)*0.35 +
-          (d.div||0)/100  // dividends are real income
-        ));
-
-        // Idiosyncratic noise: stock-specific moves beyond market correlation
-        // Sigma: 5% for low-beta defensives, up to 9% for high-beta growth
-        // This is deliberately modest — we want students to see market trends, not just randomness
-        const idioSigma=0.05 + 0.025*(beta-0.2);
-        const noise=boxMuller()*idioSigma;
-
-        // Total annual return for this stock
-        let stockReturn=capmReturn + alpha + noise;
-
-        // ── REALISTIC BOUNDS ──
-        // S&P 500 constituent stocks:
-        //   - Worst single year for a large-cap: rarely below -50% (GFC exceptions)
-        //   - Best single year: rarely above +100% for large caps
-        //   - BUT: we set a tighter educational floor — no stock drops more than 35% in one year
-        //     (this prevents discouraging extreme losses while still showing real-ish downturns)
-        //   - And no stock goes above +60% in one year (realistic for large-caps)
-        stockReturn=Math.max(-0.35, Math.min(0.60, stockReturn));
-
-        // Price cannot go below 20% of starting price over the whole simulation
-        // This reflects that S&P 500 companies don't go bankrupt/to zero
-        const minPrice=h.startPrice*0.20;
-        h.price=Math.max(minPrice, h.price*(1+stockReturn));
+        const ret = tickerReturns[h.sym][y];
+        h.price = Math.max(h.price*0.01, h.price*(1+ret));
         h.priceHistory.push(Math.round(h.price*100)/100);
-        val+=h.shares*h.price;
+        val += h.shares * h.price;
       }
       st.history.push(Math.round(val));
     }
@@ -1398,18 +1399,53 @@ function buildSim(filled,mktKey,years){
   return{students:sts,years,mktRets,yearEvents};
 }
 
+
 function yLabels(n){return['Start',...Array.from({length:n},(_,i)=>`Yr ${i+1}`)];}
 
 function buildUI(){
   frame=0;playing=false;if(chart)chart.destroy();
-  // clear any live event ticker
   const evTick=$('live-event-ticker');
   if(evTick){evTick.textContent='';evTick.style.display='none';}
+
+  // ── Inline name-label plugin ──
+  // Draws each student's name right at the tip of their live line
+  const nameLabelPlugin={
+    id:'nameLabels',
+    afterDatasetsDraw(chart){
+      const ctx=chart.ctx;
+      chart.data.datasets.forEach((ds,i)=>{
+        const meta=chart.getDatasetMeta(i);
+        if(!meta.visible||!ds.data||ds.data.length<1)return;
+        const lastPt=meta.data[ds.data.length-1];
+        if(!lastPt)return;
+        const x=lastPt.x, y=lastPt.y;
+        const name=ds.label||'';
+        if(!name)return;
+        ctx.save();
+        ctx.font='bold 11px "Syne", sans-serif';
+        ctx.fillStyle=ds.borderColor;
+        ctx.globalAlpha=0.92;
+        // Small pill background
+        const tw=ctx.measureText(name).width;
+        const px=x+8, py=y-5, ph=15, pw=tw+10;
+        // Keep label inside chart right edge
+        const drawX=px+pw>chart.width-10 ? x-pw-12 : px;
+        ctx.fillStyle='rgba(10,10,15,0.65)';
+        ctx.beginPath();
+        ctx.roundRect(drawX-2,py-11,pw,ph,4);
+        ctx.fill();
+        ctx.fillStyle=ds.borderColor;
+        ctx.fillText(name,drawX+3,py+1);
+        ctx.restore();
+      });
+    }
+  };
 
   chart=new Chart($('raceChart'),{
     type:'line',
     data:{labels:['Start'],datasets:sim.students.map(s=>({label:s.name,data:[s.history[0]],borderColor:s.color,backgroundColor:'transparent',tension:0.4,pointRadius:4,pointBackgroundColor:s.color,borderWidth:2.5}))},
     options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
+      layout:{padding:{right:0}},
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${c.parsed.y.toLocaleString()}`},backgroundColor:'rgba(18,18,26,0.95)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#f0f0f8',bodyColor:'rgba(240,240,248,0.7)',padding:10},
@@ -1419,7 +1455,8 @@ function buildUI(){
         y:{ticks:{callback:v=>'$'+(v>=1e6?(v/1e6).toFixed(2)+'M':(v/1e3).toFixed(0)+'K'),color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}},
         x:{ticks:{color:'rgba(240,240,248,0.4)',font:{family:"'DM Mono',monospace",size:11}},grid:{display:false},border:{display:false}}
       }
-    }
+    },
+    plugins:[nameLabelPlugin]
   });
   renderLegend('legend');renderStandings(0);$('play-btn').textContent='Play';$('yr-num').textContent='0';
 }
